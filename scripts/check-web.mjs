@@ -14,7 +14,7 @@ const code = scripts.join('\n;\n');
 try { new vm.Script(code); } catch (e) { fail(`błąd składni: ${e.message}`); }
 
 // Minimalne atrapy DOM, żeby skrypt dał się uruchomić poza przeglądarką.
-const el = new Proxy({}, { get: (t, k) => (k in t ? t[k] : k === 'querySelectorAll' ? () => [] : typeof k === 'string' && /^(set|add|remove|focus|click|append)/.test(k) ? () => {} : k === 'querySelector' ? () => null : undefined), set: (t, k, v) => ((t[k] = v), true) });
+const el = new Proxy({}, { get: (t, k) => (k in t ? t[k] : k === 'dataset' ? (t.dataset = {}) : k === 'querySelectorAll' ? () => [] : typeof k === 'string' && /^(set|add|remove|focus|click|append)/.test(k) ? () => {} : k === 'querySelector' ? () => null : undefined), set: (t, k, v) => ((t[k] = v), true) });
 const ctx = vm.createContext({
   document: { querySelector: () => el, querySelectorAll: () => [], createElement: () => el, body: { append() {} } },
   localStorage: { getItem: () => null, setItem() {} },

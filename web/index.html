@@ -187,6 +187,31 @@ a{color:var(--accent2)}
 .stile b{font:700 28px/1 var(--display);color:var(--c);font-variant-numeric:tabular-nums;text-shadow:0 0 14px color-mix(in srgb,var(--c) 45%,transparent)}
 .stile span{font-size:12.5px;color:var(--muted);overflow-wrap:anywhere}
 html,body{margin:0}
+/* ---- krawędzie: chipy przewijają się do krawędzi ekranu, a poświata nie jest ucinana ---- */
+.chips{padding:6px 16px;margin:-6px -16px 0;scroll-padding-inline:16px}
+.chips::after{content:"";flex:none;width:1px}
+/* ---- układ na komputer ---- */
+@media (min-width:900px){
+  body{padding-bottom:110px}
+  .wrap{max-width:1180px}
+  header{grid-template-columns:1fr minmax(260px,340px);column-gap:20px;align-items:center;padding-block:18px 12px}
+  .top{grid-column:1/-1}
+  h1{font-size:28px}
+  .chips{flex-wrap:wrap;overflow:visible;margin:-6px;padding:6px}
+  .chips[hidden]+.search{grid-column:1/-1}
+  .list{grid-template-columns:repeat(auto-fill,minmax(360px,1fr));align-items:start;gap:12px}
+  .card{grid-template-columns:72px 1fr;padding:12px}
+  .card .cover{width:72px;font-size:22px}
+  #view[data-tab=stats],#view[data-tab=sync]{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;align-items:start}
+  #view[data-tab=stats]>section,#view[data-tab=sync]>section{margin:0}
+  #view[data-tab=sync]>section:first-child,#view[data-tab=sync]>.empty{grid-column:1/-1}
+  nav.tabs{left:50%;right:auto;bottom:16px;transform:translateX(-50%);width:min(520px,calc(100% - 32px));padding:6px;border:1px solid var(--line);border-radius:16px;box-shadow:0 12px 32px rgb(0 0 0/.5)}
+  .toast{bottom:96px}
+  .overlay{align-items:center;padding:24px}
+  .sheet{max-width:600px;max-height:88vh;border-radius:16px;border-bottom:1px solid var(--line);padding:22px}
+  .arena .inner{max-width:760px}
+}
+@media (min-width:1300px){.wrap{max-width:1320px}}
 [hidden]{display:none!important}
 *{-webkit-tap-highlight-color:transparent}
 </style>
@@ -262,7 +287,7 @@ function render(){
   const cnt=k=>k==='all'?state.games.length:k==='pick'?state.games.filter(inPool).length:state.games.filter(g=>g.status===k).length;
   $('#chips').innerHTML=FILTERS.map(f=>`<button class="chip${f.star?' star':''}" data-f="${f.k}" aria-pressed="${state.filter===f.k}">${S[f.k]?`<span class="dot" style="background:var(${S[f.k].c})"></span>`:''}${f.l} <b>${cnt(f.k)}</b></button>`).join('');
   $('#chips').hidden=state.tab!=='list';$('#q').hidden=state.tab!=='list'||state.filter==='pick';
-  state.tab==='list'?(state.filter==='pick'?renderPick():renderList()):state.tab==='sync'?renderSync():renderStats();
+  $('#view').dataset.tab=state.tab;state.tab==='list'?(state.filter==='pick'?renderPick():renderList()):state.tab==='sync'?renderSync():renderStats();
 }
 
 const EMPTY=`<section class="panel"><h2>Wczytaj swoje gry z HLTB</h2>
