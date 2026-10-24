@@ -17,6 +17,7 @@ Status: `zrobione` · `w toku` · `czeka na Ciebie` · `odłożone` · `pomysł`
 | T-011 | Przeniesienie do osobnego repo `kupka-wstydu` (stary projekt .NET zostaje w `games-library`) | zrobione | niżej |
 | T-012 | Przegląd dopasowania nazw platform i trofeów (PS Vita, Xbox, Switch 2) | pomysł | niżej |
 | T-013 | Turniej: system szwajcarski + puchar z lucky loserem, klasyfikacja generalna (naprawia skaczący licznik i nierówne pojedynki) | zrobione | [SPEC](../SPEC.md#co-zagrać-turniej) |
+| T-014 | Ekrany zapowiedzi etapów turnieju, pasek etapów; wyrzucenie z turnieju i przełączniki Backlog trafiają do „Do HLTB” | zrobione | [SPEC](../SPEC.md#co-zagrać-turniej) |
 
 ## Krótkie zadania
 

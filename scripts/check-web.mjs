@@ -65,4 +65,9 @@ for (const n of [2, 3, 5, 7, 12, 18, 33]) for (let run = 0; run < 5; run++) {
   expect(rem === 0 && rows.length === 17 && !rows.some(r => T.out.includes(r.id)), 'turniej z wyrzuconą grą: zła klasyfikacja');
   expect(rows.filter(r => r.stage === 'Kwalifikacje').every(r => r.w + r.l === R), 'turniej z wyrzuconą grą: nierówna liczba pojedynków'); }
 
+// --- „Do HLTB”: wyrzucenie z turnieju i przełączniki Backlog tworzą zadania ---
+vm.runInContext(`state.games=[blank({id:"z1",title:"Z",platform:"PC",status:"backlog"}),blank({id:"z2",title:"Y",platform:"PC",status:"retired",wantReturn:true})];state.sync={};
+  {const g=state.games[0],b=snap(g);g.excluded=true;track(g,b)}{const g=state.games[1],b=snap(g);g.wantReturn=false;track(g,b)}
+  globalThis.__sync=state.sync;`, ctx);
+expect(ctx.__sync.z1?.fields?.excluded?.to === true && ctx.__sync.z2?.fields?.wantReturn?.to === false, "Do HLTB: brak zadania po wyrzuceniu gry lub zmianie Chcę wrócić");
 if (!hook) console.log('check-web: OK');

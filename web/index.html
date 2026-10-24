@@ -126,6 +126,20 @@ label.f input,label.f select,label.f textarea{font:inherit;color:var(--ink);back
 .rank.first b{color:var(--accent)}
 .rank.now{background:color-mix(in srgb,var(--accent) 12%,transparent);border-radius:8px;padding-inline:6px}
 .rank.out{opacity:.5}
+.stepper{display:flex;gap:4px;flex-wrap:wrap}
+.stepper span{flex:1;min-width:30px;text-align:center;font:700 11px/1 var(--display);padding:6px 2px;border-radius:6px;background:var(--chip);color:var(--muted);border:1px solid var(--line)}
+.stepper span.done{background:rgb(59 130 255/.18);color:var(--ink)}
+.stepper span.on{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;border-color:transparent;box-shadow:var(--glow)}
+.intro{display:grid;gap:14px;justify-items:center;text-align:center;padding-block:28px 8px}
+.intro .eyebrow{font:700 13px var(--display);letter-spacing:.16em;text-transform:uppercase;color:var(--accent2)}
+.intro .big{font:700 clamp(32px,9vw,52px)/1.05 var(--display);text-transform:uppercase;letter-spacing:.04em;background:linear-gradient(90deg,#fff,var(--accent2));-webkit-background-clip:text;background-clip:text;color:transparent;text-wrap:balance}
+.intro section.panel{width:100%;text-align:left}
+.intro .btn{padding:12px 28px;font-size:16px}
+.vsrow{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:center;font-size:14px;padding:6px 0;border-bottom:1px solid var(--line)}
+.vsrow span:first-child{text-align:right}
+.vsrow b{color:var(--accent2);font-variant-numeric:tabular-nums}
+.vsrow i{font:700 12px var(--display);color:var(--hot);font-style:normal;text-transform:uppercase}
+@media (prefers-reduced-motion:no-preference){.intro .big{animation:pop .45s cubic-bezier(.2,1.4,.4,1)}@keyframes pop{from{transform:scale(.7);opacity:.2}}}
 .champ{display:grid;grid-template-columns:96px 1fr;gap:14px;align-items:center}
 .champ .cover{width:96px;font-size:28px}
 @media (prefers-reduced-motion:no-preference){.sheet{animation:up .18s ease-out}.fighter{transition:transform .12s,border-color .12s}.fighter:active{transform:scale(.98)}@keyframes up{from{transform:translateY(24px);opacity:.6}}}
@@ -505,13 +519,38 @@ function drawArena(){
   const T=state.tour;if(!T)return closeArena();
   const p=T.finished?null:currentDuel(T);
   if(!p){if(!T.finished)finish(T);return drawResult()}
+  const key=stageKey(T);if(T.introSeen!==key)return drawIntro(T,key);
   const [a,b]=p.map(byId),rem=remaining(T),done=T.done,K=T.ko;
   const head=T.phase==='swiss'?`Kwalifikacje · runda ${T.round} z ${T.R}`:`${KO_LABEL[K.round]}${K.matches.length>1?` · ${K.i+1} z ${K.matches.length}`:''}`;
   const note=T.phase==='swiss'&&T.bye&&T.i===0&&byId(T.bye)?`<p class="small">Wolny los w tej rundzie: ${esc(byId(T.bye).title)} (+1 pkt).</p>`
     :T.phase==='ko'&&K.round==='ll'&&byId(K.llId)?`<p class="small">${esc(byId(K.llId).title)} wraca jako lucky loser: ma najwięcej punktów wśród przegranych ćwierćfinałów. Zwycięzca tego pojedynku gra w półfinale.</p>`:'';
-  arena(head,`<div class="bar"><i style="width:${done/(done+rem)*100}%"></i></div><p class="small">Pojedynek ${done+1} · zostało maks. ${rem}</p>${note}<h2>W co wolisz zagrać?</h2>
+  arena(head,`${stepper(T)}<div class="bar"><i style="width:${done/(done+rem)*100}%"></i></div><p class="small">Pojedynek ${done+1} · zostało maks. ${rem}</p>${note}<h2>W co wolisz zagrać?</h2>
    <div class="duel">${fighter(a,`data-win="${a.id}"`)}${skipBtn(a)}<div class="vs">VS</div>${fighter(b,`data-win="${b.id}"`)}${skipBtn(b)}</div>${liveTable(p)}`,true);
   save();
+}
+// Ekran zapowiedzi: pokazuje się raz na każdy etap (runda kwalifikacji, ćwierćfinały, baraż, półfinały, finał).
+const stageKey=T=>T.phase==='swiss'?'s'+T.round:T.phase==='ko'?T.ko.round:'';
+const KO_STEPS={8:[['qf','¼'],['ll','LL'],['sf','½'],['f','Finał']],4:[['sf','½'],['f','Finał']],2:[['f','Finał']],0:[]};
+function stepper(T){const ko=T.ko?T.ko.size:koSize(tAlive(T).length);
+  const steps=[...Array(T.R)].map((_,i)=>['s'+(i+1),'K'+(i+1)]).concat(KO_STEPS[ko]),cur=steps.findIndex(s=>s[0]===stageKey(T));
+  return `<div class="stepper" aria-label="Etapy turnieju">${steps.map(([k,l],i)=>`<span class="${i<cur?'done':i===cur?'on':''}" title="${k[0]==='s'?'Kwalifikacje, runda '+k.slice(1):KO_LABEL[k]}">${l}</span>`).join('')}</div>`}
+const vsRow=([a,b])=>{const A=byId(a),B=byId(b),T=state.tour;return `<div class="vsrow"><span>${esc(A?.title||'—')} <b>${A?T.pts[a]:''}</b></span><i>vs</i><span><b>${B?T.pts[b]:''}</b> ${esc(B?.title||'—')}</span></div>`};
+function drawIntro(T,key){
+  let eyebrow,big,body='';
+  if(T.phase==='swiss'){eyebrow='Kwalifikacje';big=`Runda ${T.round} z ${T.R}`;
+    const n=T.pairs.filter(p=>p.every(id=>id&&!T.out.includes(id))).length;
+    body=`<p>${n} ${n===1?'pojedynek':n<5?'pojedynki':'pojedynków'}. Każda gra gra raz, z rywalem o podobnym wyniku.</p>`
+      +(T.bye&&byId(T.bye)?`<p class="small">Wolny los: ${esc(byId(T.bye).title)} (+1 pkt).</p>`:'')
+      +(T.round>1?`<section class="panel"><h3>Prowadzą</h3>${finalRanking(T).slice(0,3).map(r=>rankRow(r,byId(r.id))).join('')}</section>`:'');
+  }else{const K=T.ko,first=K.round===({8:'qf',4:'sf',2:'f'})[K.size];
+    eyebrow=first?'Puchar':'Puchar · '+(K.round==='f'?'mecz o wszystko':'kolejny etap');
+    big={qf:'Ćwierćfinały',ll:'Baraż lucky losera',sf:'Półfinały',f:'Wielki finał'}[K.round];
+    if(first){const below=finalRanking(T).find(r=>T.stage[r.id]==='Kwalifikacje');
+      body+=`<p>Do pucharu weszło ${K.size} ${K.size===2?'gry':K.size===4?'gry':'gier'}. Punkty z kwalifikacji przechodzą dalej.</p>`
+        +(below&&byId(below.id)?`<p class="small">Tuż pod kreską: ${esc(byId(below.id).title)} (${below.pts} pkt).</p>`:'')}
+    if(K.round==='ll'&&byId(K.llId))body+=`<p><b>${esc(byId(K.llId).title)}</b> wraca do gry jako lucky loser (najwięcej punktów wśród przegranych ćwierćfinałów) i zagra o miejsce w półfinale.</p>`;
+    body+=`<section class="panel">${K.matches.map(vsRow).join('')}</section>`}
+  arena('Co zagrać?',`${stepper(T)}<div class="intro"><div class="eyebrow">${eyebrow}</div><div class="big">${big}</div>${body}<button class="btn primary" id="aGo" data-key="${key}">Zaczynamy</button></div>`);
 }
 function finish(T){const rows=finalRanking(T),N=rows.length;T.finished=true;T.phase='done';
   state.games.forEach(g=>{if(g.id in T.pts){const r=rows.find(x=>x.id===g.id);g.tp=r?N-r.place+1:null}});
@@ -531,9 +570,10 @@ function askSkip(g){
     :['Odznaczę „Chcę wymaksować” przy tej ukończonej grze.',()=>g.wantMax=false];
   openModal(`<h2>Wyrzucić z turnieju?</h2><p><b>${esc(g.title)}</b></p><p class="small">${what[0]} Jej rywal wygrywa walkowerem, a ona nie będzie klasyfikowana.</p>
    <div class="actions"><button class="btn ghost" data-close>Anuluj</button><button class="btn primary" id="ok">Wyrzuć</button></div>`);
-  $('#ok').onclick=()=>{what[1]();excludeGame(T,g.id);save();closeModal();drawArena()}}
+  $('#ok').onclick=()=>{const b4=snap(g);what[1]();track(g,b4);excludeGame(T,g.id);save();closeModal();drawArena()}}
 $('#arena').addEventListener('click',e=>{const t=e.target.closest('button');if(!t)return;const T=state.tour;
   if(t.id==='aClose'){save();return closeArena()}
+  if(t.id==='aGo'&&T){T.introSeen=t.dataset.key;save();return drawArena()}
   if(!T)return;
   if(t.id==='aEnd'){openModal(`<h2>Zakończyć turniej teraz?</h2><p class="small">Zostało maks. ${remaining(T)} pojedynków. Klasyfikację generalną ułożę z aktualnego stanu.</p><div class="actions"><button class="btn ghost" data-close>Graj dalej</button><button class="btn primary" id="ok">Zakończ</button></div>`);$('#ok').onclick=()=>{closeModal();finish(T);drawResult()}}
   else if(t.dataset.win){t.classList.add('win');setTimeout(()=>{applyWin(state.tour,t.dataset.win);save();drawArena()},160)}
@@ -541,7 +581,9 @@ $('#arena').addEventListener('click',e=>{const t=e.target.closest('button');if(!
 
 // ---------- lista "Do HLTB" ----------
 // Każda zmiana w aplikacji zapisuje różnicę względem stanu sprzed zmiany; powrót do pierwotnej wartości kasuje zadanie.
-const TRACK=['status','hours','myMain','myExtra','my100','startDate','completedDate','rating','retiredNote','platform'];
+const TRACK=['status','hours','myMain','myExtra','my100','startDate','completedDate','rating','retiredNote','platform','excluded','wantReturn','wantMax'];
+// Przełączniki aplikacji odpowiadają liście Backlog w HLTB (tak czyta je import), więc zmiana = dodaj/usuń z Backlog.
+const NO_FROM=['add','excluded','wantReturn','wantMax'];
 const snap=g=>Object.fromEntries(TRACK.map(f=>[f,g[f]??'']));
 function track(g,b4){const a=snap(g),e=state.sync[g.id]||{fields:{}};let ch=false;
   TRACK.forEach(f=>{if(String(b4[f])===String(a[f]))return;ch=true;if(!(f in e.fields))e.fields[f]={from:b4[f]};e.fields[f].to=a[f];if(String(e.fields[f].from)===String(a[f]))delete e.fields[f]});
@@ -549,7 +591,10 @@ function track(g,b4){const a=snap(g),e=state.sync[g.id]||{fields:{}};let ch=fals
   if(Object.keys(e.fields).length)state.sync[g.id]=e;else delete state.sync[g.id]}
 const HL={backlog:'Backlog',playing:'Playing',retired:'Retired',completed:'Completed',maxed:'Completed + Maxed'};
 const HLF={add:['Nowa gra',v=>v],status:['Lista',v=>HL[v]||'—'],hours:['Progress',v=>v===''||v==null?'—':v+' h'],myMain:['Main Story',fmtH],myExtra:['Main + Sides',fmtH],my100:['Completionist',fmtH],startDate:['Start Date',v=>v||'—'],completedDate:['Completion Date',v=>v||'—'],
-  rating:['Review',v=>v===''?'brak':v*10+'/100'],retiredNote:['Retired Notes',v=>v||'—'],platform:['Platform',v=>v||'—']};
+  rating:['Review',v=>v===''?'brak':v*10+'/100'],retiredNote:['Retired Notes',v=>v||'—'],platform:['Platform',v=>v||'—'],
+  excluded:['Lista Backlog',v=>v?'usuń grę z Backlog (nie chcę w to grać)':'dodaj grę z powrotem do Backlog'],
+  wantReturn:['Lista Backlog',v=>v?'dodaj do Backlog (chcę wrócić)':'usuń z Backlog (nie wracam)'],
+  wantMax:['Lista Backlog',v=>v?'dodaj do Backlog (chcę wymaksować)':'usuń z Backlog (nie maksuję)']};
 const syncCount=()=>Object.values(state.sync).reduce((a,e)=>a+Object.keys(e.fields).length,0);
 function updSyncTab(){const n=syncCount();$('#tabSync').textContent='Do HLTB'+(n?` (${n})`:'')}
 function renderSync(){const E=Object.entries(state.sync).sort((a,b)=>(b[1].ts||0)-(a[1].ts||0));
@@ -557,7 +602,7 @@ function renderSync(){const E=Object.entries(state.sync).sort((a,b)=>(b[1].ts||0
    ${E.length?`<div class="row"><button class="btn ghost sm" id="syncClear">Wyczyść wszystko</button></div>`:''}</section>
    ${E.length?E.map(([id,e])=>`<section class="panel"><div class="row" style="justify-content:space-between"><h3 style="min-width:0;overflow-wrap:anywhere">${esc(e.title)}</h3>${(h=>`<a class="small" href="${h?`https://howlongtobeat.com/game/${h}`:`https://howlongtobeat.com/?q=${encodeURIComponent(e.title)}`}" target="_blank" rel="noopener">${h?'Otwórz w HLTB':'Szukaj w HLTB'} ↗</a>`)(byId(id)?.hltbId)}</div>
      <p class="small">${esc(e.platform)} · zmienione ${esc(e.at)}</p>
-     ${Object.entries(e.fields).map(([f,x])=>`<label class="sw" style="font-weight:500;align-items:flex-start"><input type="checkbox" data-done="${id}" data-field="${f}"><span><b>${HLF[f][0]}:</b> ${esc(HLF[f][1](x.to))}${f==='add'?'':` <span class="small">(było: ${esc(HLF[f][1](x.from))})</span>`}</span></label>`).join('')}
+     ${Object.entries(e.fields).map(([f,x])=>`<label class="sw" style="font-weight:500;align-items:flex-start"><input type="checkbox" data-done="${id}" data-field="${f}"><span><b>${HLF[f][0]}:</b> ${esc(HLF[f][1](x.to))}${NO_FROM.includes(f)?'':` <span class="small">(było: ${esc(HLF[f][1](x.from))})</span>`}</span></label>`).join('')}
      <div class="row"><button class="btn sm" data-doneall="${id}">Wszystko zrobione</button></div></section>`).join('')
      :'<p class="empty">Wszystko zsynchronizowane, nie ma nic do przeklikania.</p>'}`;
   $('#syncClear')&&($('#syncClear').onclick=()=>{openModal(`<h2>Wyczyścić listę?</h2><p class="small">Usunę wszystkie zadania do przeklikania w HLTB.</p><div class="actions"><button class="btn ghost" data-close>Anuluj</button><button class="btn primary" id="ok">Wyczyść</button></div>`);
@@ -647,7 +692,7 @@ $('#view').addEventListener('click',e=>{const t=e.target.closest('button');if(!t
 $('#view').addEventListener('change',e=>{const t=e.target;
   if(t.dataset.done){const e=state.sync[t.dataset.done];delete e.fields[t.dataset.field];if(!Object.keys(e.fields).length)delete state.sync[t.dataset.done];save();render();toast('Odhaczone');return}
   if(t.dataset.plat){const g=byId(t.dataset.plat),b4=snap(g);g.platform=t.value;track(g,b4);updSyncTab();save();toast(`${g.title}: ${t.value}`);return}
-  if(!t.dataset.flag)return;byId(t.dataset.id)[t.dataset.flag]=t.checked;save();render();
+  if(!t.dataset.flag)return;{const g=byId(t.dataset.id),b4=snap(g);g[t.dataset.flag]=t.checked;track(g,b4)}save();render();
   toast(t.checked?'Gra trafi do turnieju „Co zagrać?”':'Gra wypadła z turnieju')});
 $('#tabList').onclick=()=>{state.tab='list';save();render()};
 $('#tabStats').onclick=()=>{state.tab='stats';save();render()};
