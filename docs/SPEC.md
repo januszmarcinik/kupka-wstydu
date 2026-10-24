@@ -28,11 +28,15 @@ Nakładka na HLTB: **HLTB jest jedynym źródłem prawdy**. Aplikacja wczytuje e
 - Edycja gry: status, platforma, premiera, czasy przejścia, Twoje czasy, łączny czas, ocena, flagi, link/ID z HLTB, notatka.
 
 ### Co zagrać? (turniej)
-- Pula: W kolejce (bez preorderów i bez „Nie chcę grać”), Porzucone z „Chcę wrócić”, Ukończone z „Chcę wymaksować”.
-- Przed pierwszym turniejem zakładka pokazuje uczestników jak zwykłą listę.
-- Każdy z każdym: kolejki ligowe (metoda koła), 1 pkt za wygraną, klasyfikacja generalna na żywo pod pojedynkiem, licznik i pasek postępu.
-- Można przerwać i wznowić, zakończyć wcześniej z aktualną tabelą albo wyrzucić grę z turnieju („Nie chcę w to grać”, z potwierdzeniem).
-- Zwycięzca: „Gram w to” (przejście do Gram) albo „Gramy od nowa”. Wynik zapisuje się jako „Ostatnia klasyfikacja” i sortuje kolejkę.
+- Pula: W kolejce (bez preorderów i bez „Nie chcę grać”), Porzucone z „Chcę wrócić”, Ukończone z „Chcę wymaksować”. Przed pierwszym turniejem zakładka pokazuje uczestników jak zwykłą listę.
+- **Kwalifikacje (system szwajcarski)**: R = ceil(log2 N), ograniczone do 3–6 i najwyżej N−1 (18–32 gry dają 5 rund). W każdej rundzie każda gra gra jeden pojedynek z grą o podobnym wyniku (punkty, potem Buchholz), bez rewanżów, jeśli to możliwe. Przy nieparzystej liczbie gier wolny los (+1 pkt) dostaje najsłabsza gra, która go jeszcze nie miała.
+- **Puchar**: N ≥ 12 → ósemka (1–8, 4–5, 2–7, 3–6), 6–11 → czwórka, 4–5 → finał. Przy 2–3 grach są tylko kwalifikacje. Pary układają się same. **Lucky loser**: po ćwierćfinałach przegrany z największą liczbą punktów gra baraż z najsłabszym zwycięzcą ćwierćfinałów o miejsce w półfinale.
+- Każda wygrana (także walkower i wolny los) = 1 pkt. Punkty przechodzą przez cały turniej.
+- **Klasyfikacja generalna** (na żywo pod pojedynkiem i na koniec): miejsca 1…N, czyli Mistrz, Finał, Półfinał, Ćwierćfinał, potem Kwalifikacje. W obrębie etapu kolejność wg punktów i Buchholza. Pokazuje też bilans W–P.
+- Licznik: „Pojedynek x · zostało maks. y” z paskiem postępu. Wartość „zostało” nigdy nie rośnie. Przy 18 grach turniej ma 53 pojedynki.
+- „Nie chcę w to grać” (z potwierdzeniem): gra wypada i nie jest klasyfikowana, a jej rywal wygrywa walkowerem, więc liczba pojedynków w kwalifikacjach zostaje równa.
+- Można przerwać i wznowić albo „Zakończyć teraz” z klasyfikacją z bieżącego stanu. Zwycięzca: „Gram w to” albo „Gramy od nowa”. Miejsce z ostatniego turnieju sortuje kolejkę.
+- Silnik turnieju (`newTour`, `currentDuel`, `applyWin`, `excludeGame`, `remaining`, `finalRanking`) nie dotyka DOM i jest testowany symulacją w `scripts/check-web.mjs`.
 
 ### Do HLTB
 - Każda zmiana w aplikacji (status, godziny, Twoje czasy, daty, ocena, powód porzucenia, platforma) tworzy zadanie w nazewnictwie HLTB, z wartością „było”.

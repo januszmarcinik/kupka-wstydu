@@ -264,7 +264,7 @@ try{state=JSON.parse(localStorage.getItem(KEY))}catch(e){}
 if(!state||!Array.isArray(state.games))state={games:[]};
 state.games=state.games.map(g=>blank(g));
 state.filter=state.filter||'playing';state.tab=state.tab||'list';
-if(state.tour&&state.tour.phase!=='rr')state.tour=null;
+if(state.tour&&!['swiss','ko','done'].includes(state.tour.phase))state.tour=null; // stary format każdy-z-każdym
 state.sync=state.sync||{};
 function save(){try{localStorage.setItem(KEY,JSON.stringify(state))}catch(e){}}
 
@@ -395,62 +395,132 @@ function openGame(g){
     track(g,b4);save();closeModal();render();toast('Zapisano')}}
 
 // ---------- "Co zagrać?" tournament ----------
-// Każdy z każdym: każda para gier gra dokładnie raz, wygrana = 1 pkt.
-// Kolejka ułożona w kolejki ligowe (metoda koła), więc po każdej kolejce każda gra ma tyle samo pojedynków.
+// Kwalifikacje w systemie szwajcarskim: R rund, w każdej rundzie każda gra gra jeden pojedynek z grą o podobnym wyniku.
+// Potem puchar najlepszych (8 z barażem lucky losera / 4 / 2), na końcu klasyfikacja generalna z miejscami.
+// Każda wygrana (także walkower i wolny los) = 1 pkt. Silnik (newTour…finalRanking) nie dotyka DOM — testuje go scripts/check-web.mjs.
 function shuffle(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
-function schedule(ids){const a=ids.slice();if(a.length%2)a.push(null);const n=a.length,out=[];
-  for(let r=0;r<n-1;r++){const md=[];for(let i=0;i<n/2;i++){const x=a[i],y=a[n-1-i];if(x&&y)md.push([x,y])}out.push(...shuffle(md));a.splice(1,0,a.pop())}
-  return out}
-const duels=n=>n*(n-1)/2;
-function startTour(){const ids=shuffle(state.games.filter(inPool).map(g=>g.id));
-  state.tour={phase:'rr',pts:Object.fromEntries(ids.map(id=>[id,0])),played:Object.fromEntries(ids.map(id=>[id,0])),pairs:schedule(ids),i:0,out:[],n:ids.length};save();drawArena()}
-const alive=()=>Object.keys(state.tour.pts).filter(id=>!state.tour.out.includes(id));
-const table=()=>{const T=state.tour;return alive().sort((a,b)=>(T.pts[b]-T.pts[a])||(T.played[a]-T.played[b]))};
-function nextPair(){const T=state.tour;while(T.i<T.pairs.length&&T.pairs[T.i].some(id=>T.out.includes(id)))T.i++;return T.pairs[T.i]}
-function left(){const T=state.tour;return T.pairs.slice(T.i).filter(p=>!p.some(id=>T.out.includes(id))).length}
+const tourRounds=n=>Math.max(1,Math.min(n-1,Math.max(3,Math.min(6,Math.ceil(Math.log2(Math.max(n,2)))))));
+const koSize=a=>a>=12?8:a>=6?4:a>=4?2:0;
+const koDuels=k=>k===8?8:k?k-1:0; // 8: 4 ćwierćfinały + baraż + 2 półfinały + finał
+const estDuels=n=>tourRounds(n)*Math.floor(n/2)+koDuels(koSize(n));
+const STAGE={qf:'Ćwierćfinał',ll:'Ćwierćfinał',sf:'Półfinał',f:'Finał'};
+const KO_LABEL={qf:'Ćwierćfinał',ll:'Baraż lucky losera',sf:'Półfinał',f:'Finał'};
+const TIER={'Mistrz':0,'Finał':1,'Półfinał':2,'Ćwierćfinał':3,'Kwalifikacje':5};
 
+function newTour(ids){const z=()=>Object.fromEntries(ids.map(id=>[id,0]));
+  const T={phase:'swiss',n:ids.length,R:tourRounds(ids.length),round:0,pairs:[],i:0,done:0,pts:z(),w:z(),l:z(),
+    opp:Object.fromEntries(ids.map(id=>[id,[]])),seed:Object.fromEntries(ids.map(id=>[id,Math.random()])),byes:[],bye:null,out:[],stage:{},ko:null};
+  swissPairRound(T);return T}
+const tAlive=T=>Object.keys(T.pts).filter(id=>!T.out.includes(id));
+const buch=(T,id)=>T.opp[id].reduce((s,o)=>s+T.pts[o],0);
+const byScore=T=>(a,b)=>(T.pts[b]-T.pts[a])||(buch(T,b)-buch(T,a))||(T.seed[a]-T.seed[b]);
+const standings=T=>tAlive(T).sort(byScore(T));
+function swissPairRound(T){
+  T.round++;T.i=0;T.bye=null;let list=standings(T);
+  if(list.length%2){const b=[...list].reverse().find(id=>!T.byes.includes(id))||list.at(-1); // wolny los dla najsłabszej gry bez wolnego losu
+    T.byes.push(b);T.bye=b;T.pts[b]++;T.w[b]++;list=list.filter(id=>id!==b)}
+  let steps=0;
+  const go=rest=>{if(!rest.length)return[];if(++steps>50000)return null;const a=rest[0];
+    for(let j=1;j<rest.length;j++){if(T.opp[a].includes(rest[j]))continue;
+      const sub=go(rest.filter((_,k)=>k!==0&&k!==j));if(sub)return[[a,rest[j]],...sub]}
+    return null};
+  T.pairs=go(list)||list.reduce((acc,id,k)=>k%2?acc:[...acc,[id,list[k+1]]],[]); // bez rewanżów, a gdy się nie da — po kolei
+}
+function endSwissRound(T){if(T.round<T.R&&tAlive(T).length>1)swissPairRound(T);else startKO(T)}
+function startKO(T){const list=standings(T),k=koSize(list.length);
+  list.slice(k).forEach(id=>T.stage[id]='Kwalifikacje');
+  if(!k){T.phase='done';return}
+  const s=list.slice(0,k),order=k===8?[[0,7],[3,4],[1,6],[2,5]]:k===4?[[0,3],[1,2]]:[[0,1]];
+  T.phase='ko';T.ko={size:k,round:k===8?'qf':k===4?'sf':'f',matches:order.map(([a,b])=>[s[a],s[b]]),i:0,winners:[],losers:[]}}
+function nextKO(T){const K=T.ko;let ws=K.winners;
+  if(K.round==='qf'&&!K.llDone){K.llDone=true;
+    const ll=K.losers.filter(id=>id&&!T.out.includes(id)).sort(byScore(T))[0],weak=ws.filter(Boolean).sort(byScore(T)).at(-1);
+    if(ll&&weak){K.qfWinners=ws;K.slot=ws.indexOf(weak);K.llId=ll;K.round='ll';K.matches=[[weak,ll]];K.i=0;K.winners=[];K.losers=[];return}}
+  if(K.round==='ll'){ws=K.qfWinners.slice();ws[K.slot]=K.winners[0]}
+  if(K.round==='qf'||K.round==='ll'){K.round='sf';K.matches=[[ws[0],ws[1]],[ws[2],ws[3]]]}
+  else if(K.round==='sf'){K.round='f';K.matches=[[ws[0],ws[1]]]}
+  else{if(ws[0])T.stage[ws[0]]='Mistrz';T.phase='done';return}
+  K.i=0;K.winners=[];K.losers=[]}
+const curPair=T=>T.phase==='swiss'?T.pairs[T.i]:T.phase==='ko'?T.ko.matches[T.ko.i]:null;
+function applyWin(T,w){const p=curPair(T),l=p.find(id=>id!==w)||null,wo=!l||T.out.includes(l);
+  T.pts[w]++;T.w[w]++;
+  if(!wo){T.l[l]++;T.opp[w].push(l);T.opp[l].push(w);T.done++}
+  if(T.phase==='swiss'){T.i++;if(T.i>=T.pairs.length)endSwissRound(T);return}
+  const K=T.ko;K.winners.push(w);K.losers.push(l);if(!wo)T.stage[l]=STAGE[K.round];if(K.round==='ll')delete T.stage[w];
+  K.i++;if(K.i>=K.matches.length)nextKO(T)}
+function currentDuel(T){ // zwraca bieżącą parę; pary z wyrzuconą grą rozstrzyga walkowerem
+  for(let guard=0;guard<10000;guard++){
+    if(T.phase!=='swiss'&&T.phase!=='ko')return null;
+    const p=curPair(T);
+    if(!p){T.phase==='swiss'?endSwissRound(T):nextKO(T);continue}
+    const live=p.filter(id=>id&&!T.out.includes(id));
+    if(live.length===2)return p;
+    if(live.length===1){applyWin(T,live[0]);continue}
+    if(T.phase==='swiss'){T.i++;if(T.i>=T.pairs.length)endSwissRound(T)}
+    else{const K=T.ko;K.winners.push(null);K.losers.push(null);K.i++;if(K.i>=K.matches.length)nextKO(T)}}
+  return null}
+function excludeGame(T,id){if(!T.out.includes(id))T.out.push(id)}
+function remaining(T){ // maksymalna liczba pojedynków do końca; nigdy nie rośnie
+  const live=p=>p&&p.filter(id=>id&&!T.out.includes(id)).length===2,a=tAlive(T).length;
+  if(T.phase==='swiss')return T.pairs.slice(T.i).filter(live).length+(T.R-T.round)*Math.floor(a/2)+koDuels(koSize(a));
+  if(T.phase!=='ko')return 0;
+  const K=T.ko;return K.matches.slice(K.i).filter(live).length+{qf:(K.llDone?0:1)+3,ll:3,sf:1,f:0}[K.round]}
+function finalRanking(T){
+  const tier=id=>T.stage[id]?TIER[T.stage[id]]:T.phase==='ko'?{f:0.5,sf:1.5,ll:2.5,qf:2.5}[T.ko.round]:4;
+  return tAlive(T).sort((a,b)=>(tier(a)-tier(b))||byScore(T)(a,b))
+    .map((id,i)=>({id,place:i+1,stage:T.stage[id]||(T.phase==='ko'?'W pucharze':'Kwalifikacje'),pts:T.pts[id],w:T.w[id],l:T.l[id]}))}
+
+// ---------- turniej: widok ----------
+const roundsWord=r=>r===1?'runda':r<5?'rundy':'rund';
+const rankRow=(r,g,cls='',note='')=>`<div class="rank${r.place===1?' first':''}${cls}"><b>${r.place}.</b><span class="t">${esc(g.title)}${note}<br><span class="small">${esc(g.platform)}${r.stage?` · ${r.stage}`:''}${r.w!=null?` · bilans ${r.w}–${r.l}`:''}</span></span><b>${r.pts!=null?r.pts+' pkt':''}</b></div>`;
 function renderPick(){
-  const pool=state.games.filter(inPool),n=pool.length,T=state.tour;
-  const last=(state.lastTour?.ranking||[]).map(byId).filter(Boolean);
+  const pool=state.games.filter(inPool),n=pool.length,T=state.tour,run=T&&!T.finished;
+  const rows=(state.lastTour?.rows||(state.lastTour?.ranking||[]).map((id,i)=>({id,place:i+1}))).filter(r=>byId(r.id));
+  const R=tourRounds(n),K=koSize(n);
   $('#view').innerHTML=`<section class="panel">
     <h2>Turniej „Co zagrać?”</h2>
     <p class="small">Biorą udział wszystkie gry z kolejki (bez preorderów), porzucone z „Chcę wrócić” i ukończone z „Chcę wymaksować”. Teraz: <b>${n}</b>.</p>
-    <p class="small">Każda gra mierzy się z każdą. Za wygrany pojedynek gra dostaje 1 pkt, a pod pojedynkiem widzisz klasyfikację generalną na żywo. Przy ${n} grach to <b>${duels(n)}</b> pojedynków. Możesz przerwać w dowolnym momencie i wrócić później albo zakończyć wcześniej z aktualną tabelą.</p>
-    <div class="row">${T&&T.phase==='rr'?`<button class="btn primary" id="tResume">Kontynuuj turniej (zostało ${left()})</button><button class="btn ghost" id="tNew">Zacznij od nowa</button>`
+    <p class="small"><b>1. Kwalifikacje:</b> ${R} ${roundsWord(R)} w systemie szwajcarskim. W każdej rundzie każda gra gra jeden pojedynek z grą o podobnym wyniku, bez powtórek. Wygrana = 1 pkt.<br>
+    ${K?`<b>2. Puchar:</b> ${K===8?'najlepsza ósemka gra ćwierćfinały, a najlepszy przegrany dostaje drugą szansę w barażu (lucky loser)':K===4?'najlepsza czwórka gra półfinały':'najlepsza dwójka gra finał'}. Pary układają się same, a punkty z kwalifikacji przechodzą dalej.<br>`:''}
+    <b>${K?3:2}. Klasyfikacja generalna:</b> miejsca od mistrza w dół.</p>
+    <p class="small">Przy ${n} grach to około <b>${n>1?estDuels(n):0}</b> pojedynków. Możesz przerwać w dowolnym momencie i wrócić później.</p>
+    <div class="row">${run?`<button class="btn primary" id="tResume">Kontynuuj turniej (zostało maks. ${remaining(T)})</button><button class="btn ghost" id="tNew">Zacznij od nowa</button>`
       :`<button class="btn primary" id="tNew" ${n<2?'disabled':''}>Rozpocznij turniej</button>`}</div>
    </section>
-   ${last.length?'':(n?`<p class="hint">Biorą udział (${n}). Działają tu te same przyciski co na zwykłej liście.</p><ul class="list">${pool.slice().sort(SORT.backlog).map(card).join('')}</ul>`:'')}
-   <section class="panel"${last.length?'':' hidden'}><h2>Ostatnia klasyfikacja</h2>
-    ${last.length?`<p class="small">Turniej z ${pl(state.lastTour.date)}</p>`+last.map((g,i)=>`<div class="rank${i===0?' first':''}"><b>${i+1}.</b><span class="t">${esc(g.title)}<br><span class="small">${esc(g.platform)} · ${S[g.status].l}</span></span><b>${g.tp??0} pkt</b></div>`).join('')
-      :'<p class="small">Jeszcze nie rozegrano turnieju.</p>'}
+   ${rows.length?'':(n?`<p class="hint">Biorą udział (${n}). Działają tu te same przyciski co na zwykłej liście.</p><ul class="list">${pool.slice().sort(SORT.backlog).map(card).join('')}</ul>`:'')}
+   <section class="panel"${rows.length?'':' hidden'}><h2>Ostatnia klasyfikacja</h2>
+    ${rows.length?`<p class="small">Turniej z ${pl(state.lastTour.date)}</p>`+rows.map(r=>rankRow(r,byId(r.id))).join(''):''}
    </section>`;
 }
-function fighter(g,attrs){const T=state.tour;return `<button class="fighter" ${attrs}><div class="cover" style="${art(g)}">${esc(initials(g))}</div><div class="info"><span class="title" style="pointer-events:none">${esc(g.title)}</span><span class="why">${why(g)}</span><span class="meta"><span>${esc(g.platform)}</span><span>Fabuła ${fmtH(g.ttbMain)}</span>${g.hours?`<span>Grane ${fmtH(g.hours)}</span>`:''}<span>${T.pts[g.id]} pkt</span></span></div></button>`}
+function fighter(g,attrs){const T=state.tour;return `<button class="fighter" ${attrs}><div class="cover" style="${art(g)}">${esc(initials(g))}</div><div class="info"><span class="title" style="pointer-events:none">${esc(g.title)}</span><span class="why">${why(g)}</span><span class="meta"><span>${esc(g.platform)}</span><span>Fabuła ${fmtH(g.ttbMain)}</span>${g.hours?`<span>Grane ${fmtH(g.hours)}</span>`:''}<span>${T.pts[g.id]} pkt · ${T.w[g.id]}–${T.l[g.id]}</span></span></div></button>`}
 const skipBtn=g=>`<button class="skip" data-skip="${g.id}">Nie chcę w to grać</button>`;
 function liveTable(cur){const T=state.tour;
-  return `<section class="panel"><h2>Klasyfikacja generalna</h2>${table().map((id,i)=>{const g=byId(id),now=cur.includes(id);
-    return `<div class="rank${i===0?' first':''}${now?' now':''}"><b>${i+1}.</b><span class="t">${esc(g.title)} <span class="small">· rozegrane ${T.played[id]}</span></span><b>${T.pts[id]} pkt</b></div>`}).join('')}</section>`}
+  return `<section class="panel"><h2>Klasyfikacja generalna</h2>${finalRanking(T).map(r=>{const now=cur.includes(r.id),out=T.phase==='ko'&&T.stage[r.id];
+    return rankRow(r,byId(r.id),(now?' now':'')+(out?' out':''),now?' <span class="small">· teraz gra</span>':out?' <span class="small">· odpadła</span>':'')}).join('')}</section>`}
 function closeArena(){$('#arena').innerHTML='';render()}
 function arena(head,body,end){$('#arena').innerHTML=`<div class="arena"><div class="inner"><div class="row" style="justify-content:space-between"><span class="round">${head}</span><span class="row">${end?'<button class="btn sm ghost" id="aEnd">Zakończ teraz</button>':''}<button class="btn sm ghost" id="aClose">Przerwij</button></span></div>${body}</div></div>`}
 
+function startTour(){state.tour=newTour(shuffle(state.games.filter(inPool).map(g=>g.id)));save();drawArena()}
 function drawArena(){
   const T=state.tour;if(!T)return closeArena();
-  if(T.phase==='rr'){
-    const p=nextPair();if(!p)return finish();
-    const [a,b]=p.map(byId),total=T.i+left(),done=T.i;
-    arena(`Pojedynek ${done+1} z ${total}`,`<div class="bar"><i style="width:${done/total*100}%"></i></div><h2>W co wolisz zagrać?</h2>
-     <div class="duel">${fighter(a,`data-win="${a.id}"`)}${skipBtn(a)}<div class="vs">VS</div>${fighter(b,`data-win="${b.id}"`)}${skipBtn(b)}</div>${liveTable(p)}`,true);
-  }else drawResult();
+  const p=T.finished?null:currentDuel(T);
+  if(!p){if(!T.finished)finish(T);return drawResult()}
+  const [a,b]=p.map(byId),rem=remaining(T),done=T.done,K=T.ko;
+  const head=T.phase==='swiss'?`Kwalifikacje · runda ${T.round} z ${T.R}`:`${KO_LABEL[K.round]}${K.matches.length>1?` · ${K.i+1} z ${K.matches.length}`:''}`;
+  const note=T.phase==='swiss'&&T.bye&&T.i===0&&byId(T.bye)?`<p class="small">Wolny los w tej rundzie: ${esc(byId(T.bye).title)} (+1 pkt).</p>`
+    :T.phase==='ko'&&K.round==='ll'&&byId(K.llId)?`<p class="small">${esc(byId(K.llId).title)} wraca jako lucky loser: ma najwięcej punktów wśród przegranych ćwierćfinałów. Zwycięzca tego pojedynku gra w półfinale.</p>`:'';
+  arena(head,`<div class="bar"><i style="width:${done/(done+rem)*100}%"></i></div><p class="small">Pojedynek ${done+1} · zostało maks. ${rem}</p>${note}<h2>W co wolisz zagrać?</h2>
+   <div class="duel">${fighter(a,`data-win="${a.id}"`)}${skipBtn(a)}<div class="vs">VS</div>${fighter(b,`data-win="${b.id}"`)}${skipBtn(b)}</div>${liveTable(p)}`,true);
+  save();
 }
-function win(w){const T=state.tour,p=T.pairs[T.i];T.pts[w]++;p.forEach(id=>T.played[id]++);T.i++;save();drawArena()}
-function finish(){const T=state.tour;T.phase='done';const ranking=table();
-  state.games.forEach(g=>{if(g.id in T.pts)g.tp=T.out.includes(g.id)?null:T.pts[g.id]});
-  state.lastTour={date:today(),ranking};save();drawArena()}
+function finish(T){const rows=finalRanking(T),N=rows.length;T.finished=true;T.phase='done';
+  state.games.forEach(g=>{if(g.id in T.pts){const r=rows.find(x=>x.id===g.id);g.tp=r?N-r.place+1:null}});
+  state.lastTour={date:today(),rows};save()}
 function drawResult(){
-  const T=state.tour,rk=state.lastTour.ranking.map(byId).filter(Boolean),w=rk[0];if(!w)return closeArena();
-  arena('Klasyfikacja generalna',`<div class="champ"><div class="cover" style="${art(w)}">${esc(initials(w))}</div><div><div class="why">Zwycięzca · ${T.pts[w.id]} pkt</div><h2>${esc(w.title)}</h2><p class="small">${esc(w.platform)} · ${why(w)} · wygrane ${T.pts[w.id]} z ${T.played[w.id]}</p></div></div>
+  const rows=(state.lastTour?.rows||[]).filter(r=>byId(r.id)),top=rows[0],w=top&&byId(top.id);if(!w)return closeArena();
+  arena('Klasyfikacja generalna',`<div class="champ"><div class="cover" style="${art(w)}">${esc(initials(w))}</div><div><div class="why">1. miejsce · ${top.stage} · ${top.pts} pkt</div><h2>${esc(w.title)}</h2><p class="small">${esc(w.platform)} · ${why(w)} · bilans ${top.w}–${top.l}</p></div></div>
    <div class="row"><button class="btn primary" id="wPlay">Gram w to</button><button class="btn" id="wAgain">Gramy od nowa</button></div>
-   <section class="panel">${rk.map((g,i)=>`<div class="rank${i===0?' first':''}"><b>${i+1}.</b><span class="t">${esc(g.title)}<br><span class="small">${esc(g.platform)} · wygrane ${T.pts[g.id]} z ${T.played[g.id]}</span></span><b>${T.pts[g.id]} pkt</b></div>`).join('')}</section>`);
+   <section class="panel">${rows.map(r=>rankRow(r,byId(r.id))).join('')}</section>`);
   $('#wPlay').onclick=()=>openTransition(w,'playing',()=>{state.tour=null;state.filter='playing';save();closeArena()});
   $('#wAgain').onclick=startTour;
 }
@@ -459,14 +529,14 @@ function askSkip(g){
   const what=g.status==='backlog'?['Gra zostanie oznaczona „Nie chcę w to grać” i wypadnie z turniejów. Zostaje w kolejce, a oznaczenie zdejmiesz w edycji gry.',()=>g.excluded=true]
     :g.status==='retired'?['Odznaczę „Chcę wrócić” przy tej porzuconej grze.',()=>g.wantReturn=false]
     :['Odznaczę „Chcę wymaksować” przy tej ukończonej grze.',()=>g.wantMax=false];
-  openModal(`<h2>Wyrzucić z turnieju?</h2><p><b>${esc(g.title)}</b></p><p class="small">${what[0]} Jej pozostałe pojedynki zostaną pominięte.</p>
+  openModal(`<h2>Wyrzucić z turnieju?</h2><p><b>${esc(g.title)}</b></p><p class="small">${what[0]} Jej rywal wygrywa walkowerem, a ona nie będzie klasyfikowana.</p>
    <div class="actions"><button class="btn ghost" data-close>Anuluj</button><button class="btn primary" id="ok">Wyrzuć</button></div>`);
-  $('#ok').onclick=()=>{what[1]();T.out.push(g.id);save();closeModal();drawArena()}}
+  $('#ok').onclick=()=>{what[1]();excludeGame(T,g.id);save();closeModal();drawArena()}}
 $('#arena').addEventListener('click',e=>{const t=e.target.closest('button');if(!t)return;const T=state.tour;
   if(t.id==='aClose'){save();return closeArena()}
   if(!T)return;
-  if(t.id==='aEnd'){openModal(`<h2>Zakończyć turniej teraz?</h2><p class="small">Zostało ${left()} pojedynków. Zwycięzcę wyłonię z aktualnej tabeli.</p><div class="actions"><button class="btn ghost" data-close>Graj dalej</button><button class="btn primary" id="ok">Zakończ</button></div>`);$('#ok').onclick=()=>{closeModal();finish()}}
-  else if(t.dataset.win){t.classList.add('win');setTimeout(()=>win(t.dataset.win),160)}
+  if(t.id==='aEnd'){openModal(`<h2>Zakończyć turniej teraz?</h2><p class="small">Zostało maks. ${remaining(T)} pojedynków. Klasyfikację generalną ułożę z aktualnego stanu.</p><div class="actions"><button class="btn ghost" data-close>Graj dalej</button><button class="btn primary" id="ok">Zakończ</button></div>`);$('#ok').onclick=()=>{closeModal();finish(T);drawResult()}}
+  else if(t.dataset.win){t.classList.add('win');setTimeout(()=>{applyWin(state.tour,t.dataset.win);save();drawArena()},160)}
   else if(t.dataset.skip)askSkip(byId(t.dataset.skip))});
 
 // ---------- lista "Do HLTB" ----------

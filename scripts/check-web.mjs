@@ -39,4 +39,30 @@ expect(by('Test Backlog').status === 'backlog', 'Test Backlog: oczekiwano W kole
 const q = by('Test, with "comma"');
 expect(q.notes.includes('\n') && q.completedDate === '2022-12-19', 'CSV: cudzysłowy, przecinki i wieloliniowe pola');
 
+// --- turniej: system szwajcarski + puchar (symulacja z losowymi zwycięzcami) ---
+vm.runInContext(`globalThis.__sim=(n,excludeAt)=>{const ids=[...Array(n)].map((_,i)=>'t'+i),T=newTour(ids);let prev=Infinity,steps=0,clicks=0;
+  for(;;){const p=currentDuel(T);if(!p)break;const r=remaining(T);if(r>prev)throw new Error('licznik wzrósł '+prev+' -> '+r);prev=r;
+    if(steps===excludeAt)excludeGame(T,p[0]);else{applyWin(T,p[Math.random()<.5?0:1]);clicks++}
+    if(++steps>5000)throw new Error('pętla')}
+  return{T,rows:finalRanking(T),rem:remaining(T),clicks,R:tourRounds(n),est:estDuels(n)}}`, ctx);
+const sim = (...a) => { try { return ctx.__sim(...a); } catch (e) { fail(`turniej: ${e.message}`); } };
+for (const n of [2, 3, 5, 7, 12, 18, 33]) for (let run = 0; run < 5; run++) {
+  const { T, rows, rem, clicks, R, est } = sim(n);
+  const tag = `turniej n=${n}:`;
+  expect(T.phase === 'done' && rem === 0, `${tag} nie dobiegł końca`);
+  expect(clicks === est, `${tag} pojedynków ${clicks}, a zapowiedziane ${est}`);
+  expect(rows.length === n && rows.every((r, i) => r.place === i + 1), `${tag} miejsca nie są 1..${n}`);
+  const quali = rows.filter(r => r.stage === 'Kwalifikacje');
+  expect(quali.every(r => r.w + r.l === R), `${tag} gry odpadające w kwalifikacjach mają różną liczbę pojedynków`);
+  const cnt = st => rows.filter(r => r.stage === st).length;
+  const k = n >= 12 ? 8 : n >= 6 ? 4 : n >= 4 ? 2 : 0;
+  if (k) expect(rows[0].stage === 'Mistrz' && rows[1].stage === 'Finał', `${tag} 1. miejsce to nie mistrz albo 2. to nie finalista`);
+  if (k === 8) expect(cnt('Ćwierćfinał') === 4 && cnt('Półfinał') === 2, `${tag} zły podział pucharu (ćwierćfinał/półfinał)`);
+  if (k === 4) expect(cnt('Półfinał') === 2, `${tag} zły podział półfinałów`);
+  if (n >= 18) expect(quali.every(r => new Set(T.opp[r.id]).size === T.opp[r.id].length), `${tag} rewanż w kwalifikacjach`);
+}
+{ const { T, rows, rem, R } = sim(18, 3);
+  expect(rem === 0 && rows.length === 17 && !rows.some(r => T.out.includes(r.id)), 'turniej z wyrzuconą grą: zła klasyfikacja');
+  expect(rows.filter(r => r.stage === 'Kwalifikacje').every(r => r.w + r.l === R), 'turniej z wyrzuconą grą: nierówna liczba pojedynków'); }
+
 if (!hook) console.log('check-web: OK');
