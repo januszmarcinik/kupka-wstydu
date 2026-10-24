@@ -1,0 +1,563 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#070b18">
+<meta name="robots" content="noindex">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath fill='%233b82ff' d='M9 9h14a7 7 0 0 1 6.8 8.6l-1.3 5.6a3.4 3.4 0 0 1-5.9 1.4L19.8 21h-7.6l-2.8 3.6a3.4 3.4 0 0 1-5.9-1.4l-1.3-5.6A7 7 0 0 1 9 9z'/%3E%3C/svg%3E">
+<title>Kupka Wstydu</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@600;700&family=Figtree:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: one mobile column on a deep-navy "console dashboard" — sticky HUD header with filter chips, game cards like a game library shelf, bottom sheets for edits, full-screen arena for the "Co zagrać?" tournament.
+   Deliberately single dark theme: a gaming UI lives at night. */
+:root{
+  --bg:#070b18; --bg2:#0d1430; --surface:#101831; --surface2:#16203f; --ink:#e9efff; --muted:#8c99bd; --line:#223056;
+  --accent:#3b82ff; --accent2:#22d3ee; --accent-ink:#ffffff; --chip:#1a2547; --hot:#ff4f8b;
+  --shadow:0 1px 0 rgb(255 255 255/.04) inset,0 8px 24px rgb(0 0 0/.35); --glow:0 0 0 1px rgb(59 130 255/.55),0 0 18px rgb(59 130 255/.35);
+  --s-back:#7f8fb8; --s-play:#2ee6a6; --s-ret:#ff5c7a; --s-done:#3b82ff; --s-max:#ffc83d; --s-pre:#b26bff;
+  --display:"Chakra Petch",ui-sans-serif,system-ui,sans-serif;
+  --body:"Figtree",ui-sans-serif,system-ui,sans-serif;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:15px/1.45 var(--body);padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 96px}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
+.wrap{max-width:640px;margin:0 auto}
+header{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);padding-block:12px 8px;display:grid;gap:10px}
+.top{display:flex;align-items:center;justify-content:space-between;gap:8px}
+h1{font:800 26px/1 var(--display);margin:0;letter-spacing:-.02em}
+h2{font:600 19px/1.2 var(--display);margin:0;text-wrap:balance}
+h3{font:600 15px/1.2 var(--body);margin:0}
+p{margin:0}
+button,select{font:inherit;color:inherit;cursor:pointer;border:0;background:none}
+button:disabled{opacity:.45;cursor:default}
+button:focus-visible,select:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.btn{background:var(--chip);padding:8px 12px;border-radius:10px;font-weight:600;font-size:14px}
+.btn.primary{background:var(--accent);color:var(--accent-ink)}
+.btn.ghost{background:transparent;border:1px solid var(--line)}
+.btn.sm{font-size:12.5px;padding:5px 10px}
+.chips{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none}
+.chip{flex:none;display:flex;align-items:center;gap:6px;background:var(--chip);padding:6px 11px;border-radius:999px;font-size:13px;font-weight:600;white-space:nowrap}
+.chip b{font-variant-numeric:tabular-nums;font-weight:600;color:var(--muted)}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+.chip[aria-pressed="true"] b{color:inherit;opacity:.7}
+.chip.star{background:var(--accent);color:var(--accent-ink)}
+.chip.star b{color:inherit;opacity:.8}
+.chip.star[aria-pressed="true"]{outline:2px solid var(--ink);outline-offset:1px}
+.search{font:inherit;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:8px 12px;width:100%}
+.dot{width:8px;height:8px;border-radius:50%;flex:none}
+.hint{color:var(--muted);font-size:13px;margin:4px 0 10px}
+.list{display:grid;gap:8px;list-style:none;margin:0;padding:0}
+.pbar{position:relative;height:16px;border-radius:8px;background:var(--chip);overflow:hidden}
+.pbar i{display:block;height:100%;background:linear-gradient(90deg,var(--accent2),var(--accent));border-radius:8px}
+.pbar span{position:absolute;inset:0;display:grid;place-items:center;font-size:11px;font-weight:700;color:var(--ink);font-variant-numeric:tabular-nums}
+.card{box-shadow:var(--shadow);background:var(--surface);border:1px solid var(--line);border-radius:14px;display:grid;grid-template-columns:56px 1fr;gap:12px;padding:10px}
+.card.dim{opacity:.55}
+.cover{width:56px;aspect-ratio:3/4;border-radius:6px;display:grid;place-items:center;font:800 18px var(--display);color:#fff;max-width:100%;text-shadow:0 1px 2px rgb(0 0 0/.3)}
+.info{min-width:0;display:grid;gap:6px}
+.title{font-weight:600;line-height:1.25;overflow-wrap:anywhere;text-align:left;padding:0}
+button.cover{cursor:pointer;padding:0}
+button.cover:active{transform:scale(.96)}
+.meta{display:flex;flex-wrap:wrap;gap:4px 10px;font-size:12.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+.pill{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;padding:3px 8px;border-radius:999px;background:var(--chip);color:var(--ink)}
+.pill.pre{background:var(--s-pre);color:#fff}
+select.plat{appearance:none;-webkit-appearance:none;font-size:12px;font-weight:600;padding:3px 22px 3px 9px;border-radius:999px;background:var(--chip) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23888'/%3E%3C/svg%3E") no-repeat right 8px center;color:var(--ink);max-width:100%}
+.goal{display:grid;grid-template-columns:repeat(3,1fr);gap:4px}
+.goal button{border:1px solid var(--line);border-radius:8px;padding:4px 6px;text-align:left;font-size:11.5px;line-height:1.2;color:var(--muted)}
+.goal button b{display:block;font-size:13.5px;color:var(--ink);font-variant-numeric:tabular-nums}
+.goal .mine{display:block;font-size:11px;font-weight:600;color:var(--accent);font-variant-numeric:tabular-nums}
+.goal button[aria-pressed="true"]{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 14%,transparent)}
+.prog{display:grid;gap:3px;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.bar{height:6px;border-radius:3px;background:var(--chip);overflow:hidden}
+.bar i{display:block;height:100%;background:var(--accent)}
+.row{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.sw{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600}
+.sw input{width:18px;height:18px;accent-color:var(--accent)}
+.empty{text-align:center;color:var(--muted);padding:40px 0}
+nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:6;background:var(--surface);border-top:1px solid var(--line);display:flex;justify-content:center;gap:8px;padding:8px max(16px,env(safe-area-inset-right,0px)) calc(8px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+nav.tabs button{flex:1;max-width:200px;padding:10px;border-radius:10px;font-weight:600}
+nav.tabs button[aria-pressed="true"]{background:var(--chip)}
+section.panel{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:12px;display:grid;gap:8px}
+.statrow{display:grid;grid-template-columns:110px 1fr 40px;gap:8px;align-items:center;font-size:13.5px}
+.statrow .bar{height:8px}
+.statrow span:last-child{text-align:right;font-variant-numeric:tabular-nums}
+.overlay{position:fixed;inset:0;z-index:20;background:rgb(10 12 20/.5);display:flex;align-items:flex-end;justify-content:center}
+.sheet{background:var(--surface);width:100%;max-width:640px;max-height:92%;overflow-y:auto;border-radius:16px 16px 0 0;padding:18px max(16px,env(safe-area-inset-right,0px)) calc(18px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));display:grid;gap:12px}
+.sheet .actions{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+label.f{display:grid;gap:4px;font-size:13px;color:var(--muted)}
+label.f input,label.f select,label.f textarea{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px;width:100%}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.lbl{font-size:13px;color:var(--muted);margin-bottom:6px}
+.statuspick{display:flex;flex-wrap:wrap;gap:6px}
+.stars{display:grid;grid-template-columns:repeat(10,1fr);gap:4px}
+.stars button{aspect-ratio:1;border-radius:8px;background:var(--chip);font-weight:600;font-size:13px;font-variant-numeric:tabular-nums}
+.stars button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
+.conf{border:1px solid var(--line);border-radius:10px;padding:10px;display:grid;gap:8px}
+.conf .fld{display:grid;grid-template-columns:90px 1fr 1fr;gap:6px;align-items:center;font-size:13px}
+.opt{padding:6px 8px;border-radius:8px;border:1px solid var(--line);text-align:left;font-size:13px;overflow-wrap:anywhere}
+.opt[aria-pressed="true"]{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 18%,transparent)}
+.small{font-size:12.5px;color:var(--muted)}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(76px + env(safe-area-inset-bottom,0px));z-index:40;background:var(--ink);color:var(--bg);padding:8px 14px;border-radius:10px;font-size:14px}
+/* tournament */
+.arena{position:fixed;inset:0;z-index:15;background:var(--bg);overflow-y:auto;padding:calc(14px + env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) calc(20px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+.arena .inner{max-width:640px;margin:0 auto;display:grid;gap:12px}
+.round{font:800 13px var(--body);letter-spacing:.08em;text-transform:uppercase;color:var(--accent)}
+.duel{display:grid;gap:8px}
+.vs{text-align:center;font:800 18px var(--display);color:var(--muted)}
+.fighter{background:var(--surface);border:2px solid var(--line);border-radius:14px;padding:12px;display:grid;grid-template-columns:64px 1fr;gap:12px;text-align:left;width:100%;align-items:center}
+.fighter .cover{width:64px;font-size:20px}
+.fighter:hover{border-color:var(--accent)}
+.fighter.win{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 14%,var(--surface))}
+.why{font-size:12.5px;font-weight:600;color:var(--accent)}
+.skip{justify-self:end;font-size:12.5px;color:var(--muted);text-decoration:underline;padding:2px 4px}
+.rankslot{display:grid;place-items:center;width:30px;height:30px;border-radius:50%;background:var(--chip);font:800 15px var(--display);flex:none}
+.fighter.ranked .rankslot{background:var(--accent);color:var(--accent-ink)}
+.fighter.t5{grid-template-columns:30px 48px 1fr}
+.fighter.t5 .cover{width:48px;font-size:16px}
+.steps{display:flex;gap:4px}
+.steps i{flex:1;height:4px;border-radius:2px;background:var(--chip)}
+.steps i.on{background:var(--accent)}
+.rank{display:grid;grid-template-columns:28px 1fr auto;gap:8px;align-items:center;font-size:14px;padding:6px 0;border-bottom:1px solid var(--line)}
+.rank b{font-variant-numeric:tabular-nums;color:var(--muted);font-weight:600}
+.rank .t{min-width:0;overflow-wrap:anywhere}
+.rank.first{font-weight:600}
+.rank.first b{color:var(--accent)}
+.rank.now{background:color-mix(in srgb,var(--accent) 12%,transparent);border-radius:8px;padding-inline:6px}
+.rank.out{opacity:.5}
+.champ{display:grid;grid-template-columns:96px 1fr;gap:14px;align-items:center}
+.champ .cover{width:96px;font-size:28px}
+@media (prefers-reduced-motion:no-preference){.sheet{animation:up .18s ease-out}.fighter{transition:transform .12s,border-color .12s}.fighter:active{transform:scale(.98)}@keyframes up{from{transform:translateY(24px);opacity:.6}}}
+
+/* ---- gaming skin ---- */
+body{background:radial-gradient(1200px 600px at 50% -200px,rgb(59 130 255/.22),transparent 70%),radial-gradient(800px 500px at 110% 10%,rgb(34 211 238/.08),transparent 60%),var(--bg);background-attachment:fixed}
+body::before{background:var(--bg)}
+header{background:linear-gradient(var(--bg) 70%,rgb(7 11 24/0))}
+h1{font:700 24px/1 var(--display);text-transform:uppercase;letter-spacing:.06em;display:flex;align-items:center;gap:10px}
+h1 svg{width:30px;height:30px;flex:none;filter:drop-shadow(0 0 8px rgb(59 130 255/.6))}
+h1 span{background:linear-gradient(90deg,#fff,var(--accent2));-webkit-background-clip:text;background-clip:text;color:transparent}
+h2{font-family:var(--display);letter-spacing:.02em}
+.btn{border:1px solid transparent}
+.btn.primary{background:linear-gradient(135deg,var(--accent),#2563eb);box-shadow:0 4px 14px rgb(59 130 255/.35)}
+.btn.ghost{border-color:var(--line);background:rgb(255 255 255/.02)}
+.chip{background:var(--chip);border:1px solid var(--line)}
+.chip[aria-pressed="true"]{background:var(--surface2);color:var(--ink);box-shadow:var(--glow);border-color:transparent}
+.chip.star{background:linear-gradient(135deg,var(--hot),#ff8a3d);color:#fff;border-color:transparent}
+.chip.star[aria-pressed="true"]{outline:none;box-shadow:0 0 0 1px rgb(255 79 139/.7),0 0 18px rgb(255 79 139/.45)}
+.search{background:var(--surface);border-color:var(--line)}
+.search:focus{box-shadow:var(--glow);outline:none}
+.card{background:linear-gradient(180deg,var(--surface2),var(--surface));border-color:var(--line);transition:border-color .15s,box-shadow .15s}
+.card:hover{border-color:rgb(59 130 255/.5)}
+.cover{border-radius:8px;font-family:var(--display);letter-spacing:.04em;box-shadow:0 4px 12px rgb(0 0 0/.45),0 0 0 1px rgb(255 255 255/.08) inset;position:relative;overflow:hidden}
+.cover::after{content:"";position:absolute;inset:0;background:linear-gradient(160deg,rgb(255 255 255/.22),transparent 40%),repeating-linear-gradient(135deg,rgb(255 255 255/.05) 0 2px,transparent 2px 8px);pointer-events:none}
+.pill{background:var(--chip);border:1px solid var(--line)}
+select.plat{background-color:var(--chip);border:1px solid var(--line)}
+.goal button{background:rgb(255 255 255/.02)}
+.goal button[aria-pressed="true"]{border-color:var(--accent);background:rgb(59 130 255/.14);box-shadow:0 0 12px rgb(59 130 255/.25)}
+.goal .mine{color:var(--accent2)}
+.pbar{background:var(--chip);border:1px solid var(--line)}
+.pbar i{background:linear-gradient(90deg,var(--accent),var(--accent2));box-shadow:0 0 12px rgb(34 211 238/.5)}
+.pbar span{color:#fff;text-shadow:0 1px 2px rgb(0 0 0/.6)}
+nav.tabs{background:rgb(13 20 48/.92);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-top-color:var(--line)}
+nav.tabs button{color:var(--muted)}
+nav.tabs button[aria-pressed="true"]{background:var(--surface2);color:var(--ink);box-shadow:inset 0 -2px 0 var(--accent)}
+section.panel{background:linear-gradient(180deg,var(--surface2),var(--surface));border-color:var(--line);box-shadow:var(--shadow)}
+.statrow .bar i{box-shadow:0 0 10px currentColor}
+.overlay{background:rgb(3 6 15/.7);backdrop-filter:blur(3px)}
+.sheet{background:var(--surface);border:1px solid var(--line);border-bottom:0}
+label.f input,label.f select,label.f textarea{background:var(--bg2);border-color:var(--line)}
+.stars button{background:var(--chip);border:1px solid var(--line)}
+.stars button[aria-pressed="true"]{background:linear-gradient(135deg,var(--s-max),#ff9f1c);color:#1b1200;border-color:transparent}
+.arena{background:radial-gradient(900px 500px at 50% 0,rgb(59 130 255/.25),transparent 70%),var(--bg)}
+.round{color:var(--accent2);font-family:var(--display)}
+.fighter{background:linear-gradient(180deg,var(--surface2),var(--surface));border-color:var(--line)}
+.fighter:hover{border-color:var(--accent);box-shadow:var(--glow)}
+.fighter.win{border-color:var(--accent2);box-shadow:0 0 0 1px var(--accent2),0 0 24px rgb(34 211 238/.5)}
+.why{color:var(--accent2)}
+.vs{font:700 28px var(--display);letter-spacing:.1em;background:linear-gradient(90deg,var(--hot),var(--accent));-webkit-background-clip:text;background-clip:text;color:transparent}
+.rank.first b{color:var(--s-max)}
+.rank.now{background:rgb(59 130 255/.14)}
+.toast{background:var(--surface2);color:var(--ink);border:1px solid var(--accent);box-shadow:var(--glow)}
+.opt[aria-pressed="true"]{background:rgb(59 130 255/.16)}
+a{color:var(--accent2)}
+.stiles{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.stile{text-align:left;border:1px solid var(--line);border-radius:12px;padding:12px;background:color-mix(in srgb,var(--c) 10%,var(--surface));box-shadow:inset 0 2px 0 var(--c);display:grid;gap:4px;min-width:0}
+.stile:hover{border-color:var(--c)}
+.stile b{font:700 28px/1 var(--display);color:var(--c);font-variant-numeric:tabular-nums;text-shadow:0 0 14px color-mix(in srgb,var(--c) 45%,transparent)}
+.stile span{font-size:12.5px;color:var(--muted);overflow-wrap:anywhere}
+html,body{margin:0}
+[hidden]{display:none!important}
+*{-webkit-tap-highlight-color:transparent}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <div class="top">
+      <h1><svg viewBox="0 0 32 32" aria-hidden="true"><defs><linearGradient id="lg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#3b82ff"/><stop offset="1" stop-color="#22d3ee"/></linearGradient></defs><path fill="url(#lg)" d="M9 9h14a7 7 0 0 1 6.8 8.6l-1.3 5.6a3.4 3.4 0 0 1-5.9 1.4L19.8 21h-7.6l-2.8 3.6a3.4 3.4 0 0 1-5.9-1.4l-1.3-5.6A7 7 0 0 1 9 9z"/><path fill="#070b18" d="M9.5 13h2v2h2v2h-2v2h-2v-2h-2v-2h2zM21.5 13.2a1.3 1.3 0 1 1 0 2.6 1.3 1.3 0 0 1 0-2.6zm2.6 2.6a1.3 1.3 0 1 1 0 2.6 1.3 1.3 0 0 1 0-2.6z"/></svg><span>Kupka Wstydu</span></h1>
+      <div class="row"><button class="btn ghost sm" id="importBtn">Import HLTB</button></div>
+      <input type="file" id="file" accept=".csv,text/csv" hidden>
+    </div>
+    <div class="chips" id="chips" role="group" aria-label="Filtr"></div>
+    <input id="q" class="search" type="search" placeholder="Szukaj w swoich grach" autocomplete="off" aria-label="Szukaj w swoich grach">
+  </header>
+  <main id="view"></main>
+</div>
+<nav class="tabs">
+  <button id="tabList" aria-pressed="true">Gry</button>
+  <button id="tabStats" aria-pressed="false">Statystyki</button>
+  <button id="tabSync" aria-pressed="false">Do HLTB</button>
+</nav>
+<div id="arena"></div>
+<div id="modal"></div>
+
+<script>
+const STATUSES=[
+  {k:'backlog',l:'W kolejce',c:'--s-back'},{k:'playing',l:'Gram',c:'--s-play'},{k:'retired',l:'Porzucone',c:'--s-ret'},
+  {k:'completed',l:'Ukończone',c:'--s-done'},{k:'maxed',l:'Wymaksowane',c:'--s-max'}];
+const S=Object.fromEntries(STATUSES.map(s=>[s.k,s]));
+const FILTERS=[{k:'playing',l:'Gram'},{k:'pick',l:'Co zagrać?',star:true},{k:'backlog',l:'W kolejce'},{k:'retired',l:'Porzucone'},{k:'completed',l:'Ukończone'},{k:'maxed',l:'Wymaksowane'},{k:'all',l:'Wszystkie'}];
+const GOALS=[{k:'main',l:'Fabuła',f:'ttbMain'},{k:'extra',l:'+ Poboczne',f:'ttbExtra'},{k:'full',l:'100%',f:'ttb100'}];
+const PLATFORMS=['PlayStation 5','PlayStation 4','Xbox Series X/S','Xbox One','Nintendo Switch 2','Nintendo Switch','PC'];
+const KEY='kupka-wstydu-v1';
+const today=()=>new Date().toISOString().slice(0,10);
+const pl=d=>d?d.slice(8,10)+'.'+d.slice(5,7)+'.'+d.slice(0,4):'—';
+const isPre=g=>g.releaseDate&&g.releaseDate>today();
+// Rodzina trofeów: calaki tylko od Xbox 360, platyny tylko PS3/PS4/PS5/Vita, 100% dowolny Nintendo.
+const family=p=>{p=(p||'').toLowerCase().trim();
+  if(p.includes('xbox'))return p==='xbox'?'other':'xbox';
+  if(/playstation (3|4|5|vita)|\bps(3|4|5)\b|vita/.test(p))return'ps';
+  if(/nintendo|switch|wii|game ?boy/.test(p))return'nintendo';return'other'};
+
+function blank(o){return Object.assign({ttbMain:'',ttbExtra:'',ttb100:'',goal:'full',hours:0,startDate:'',completedDate:'',maxedDate:'',retiredDate:'',releaseDate:'',rating:'',notes:'',retiredNote:'',wantReturn:false,wantMax:false,excluded:false,tp:null,history:[],hltbId:'',igdbId:'',myMain:'',myExtra:'',my100:''},o)}
+const MY={main:'myMain',extra:'myExtra',full:'my100'}; // Twoje własne czasy z HLTB (Main Story / Main + Sides / Completionist)
+
+let state;
+try{state=JSON.parse(localStorage.getItem(KEY))}catch(e){}
+if(!state||!Array.isArray(state.games))state={games:[]};
+state.games=state.games.map(g=>blank(g));
+state.filter=state.filter||'playing';state.tab=state.tab||'list';
+if(state.tour&&state.tour.phase!=='rr')state.tour=null;
+state.sync=state.sync||{};
+function save(){try{localStorage.setItem(KEY,JSON.stringify(state))}catch(e){}}
+
+const $=s=>document.querySelector(s);
+const $$=s=>[...document.querySelectorAll(s)];
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const fmtH=h=>h===''||h==null?'—':(Math.round(h*10)/10)+' h';
+const byId=id=>state.games.find(g=>g.id===id);
+function toast(t){const d=document.createElement('div');d.className='toast';d.textContent=t;document.body.append(d);setTimeout(()=>d.remove(),2400)}
+function hue(s){let h=0;for(const c of s)h=(h*31+c.charCodeAt(0))%360;return h}
+const art=g=>{const h=hue(g.title);return `background:radial-gradient(circle at 80% 15%,hsl(${(h+40)%360} 90% 62%/.55),transparent 55%),linear-gradient(150deg,hsl(${h} 78% 46%),hsl(${(h+35)%360} 80% 18%))`};
+const initials=g=>g.title.replace(/[^A-Za-z0-9ąćęłńóśźżĄĆĘŁŃÓŚŹŻ ]/g,'').split(' ').filter(Boolean).slice(0,2).map(w=>w[0]).join('').toUpperCase();
+const platOptions=cur=>[...new Set([...PLATFORMS,...state.games.map(x=>x.platform).filter(Boolean),cur].filter(Boolean))].map(p=>`<option${p===cur?' selected':''}>${esc(p)}</option>`).join('');
+
+const inPool=g=>!g.excluded&&!isPre(g)&&(g.status==='backlog'||(g.status==='retired'&&g.wantReturn)||(g.status==='completed'&&g.wantMax));
+const why=g=>g.status==='backlog'?'Z kolejki':g.status==='retired'?'Porzucona, chcesz wrócić':'Ukończona, do wymaksowania';
+
+function render(){
+  $('#tabList').setAttribute('aria-pressed',state.tab==='list');$('#tabStats').setAttribute('aria-pressed',state.tab==='stats');$('#tabSync').setAttribute('aria-pressed',state.tab==='sync');updSyncTab();
+  const cnt=k=>k==='all'?state.games.length:k==='pick'?state.games.filter(inPool).length:state.games.filter(g=>g.status===k).length;
+  $('#chips').innerHTML=FILTERS.map(f=>`<button class="chip${f.star?' star':''}" data-f="${f.k}" aria-pressed="${state.filter===f.k}">${S[f.k]?`<span class="dot" style="background:var(${S[f.k].c})"></span>`:''}${f.l} <b>${cnt(f.k)}</b></button>`).join('');
+  $('#chips').hidden=state.tab!=='list';$('#q').hidden=state.tab!=='list'||state.filter==='pick';
+  state.tab==='list'?(state.filter==='pick'?renderPick():renderList()):state.tab==='sync'?renderSync():renderStats();
+}
+
+const EMPTY=`<section class="panel"><h2>Wczytaj swoje gry z HLTB</h2>
+  <p class="small">1. Na howlongtobeat.com wyeksportuj swoją listę gier do pliku CSV (opcja eksportu w ustawieniach profilu).<br>2. Stuknij przycisk poniżej i wybierz ten plik.<br>3. Gry zostają tylko w tej przeglądarce. Nic nie jest wysyłane na serwer.</p>
+  <p class="small">Każdy kolejny import zastępuje wszystkie dane w aplikacji, więc HLTB pozostaje jedynym źródłem prawdy.</p>
+  <div class="row"><button class="btn primary" id="importBig">Wybierz plik z HLTB</button></div></section>`;
+const SORT={playing:(a,b)=>(b.startDate||'').localeCompare(a.startDate||''),retired:(a,b)=>(b.retiredDate||'').localeCompare(a.retiredDate||''),
+  completed:(a,b)=>(b.completedDate||'').localeCompare(a.completedDate||''),maxed:(a,b)=>(b.maxedDate||b.completedDate||'').localeCompare(a.maxedDate||a.completedDate||''),
+  backlog:(a,b)=>(a.excluded-b.excluded)||(isPre(a)-isPre(b))||((b.tp??-1)-(a.tp??-1))||a.title.localeCompare(b.title,'pl'),all:(a,b)=>a.title.localeCompare(b.title,'pl')};
+const HINT={playing:'Gry, w które teraz grasz.',backlog:'Gry, których jeszcze nie zaczynałeś. Kolejność wynika z ostatniego turnieju „Co zagrać?”.',
+  retired:'Zaznacz „Chcę wrócić”, żeby gra brała udział w turnieju.',completed:'Zaznacz „Chcę wymaksować”, żeby gra brała udział w turnieju.',maxed:'Gry ukończone na 100%.',all:''};
+
+function renderList(){
+  if(!state.games.length){$('#view').innerHTML=EMPTY;return}
+  const q=norm(qv);
+  const v=q?state.games.filter(g=>norm(g.title).includes(q)).sort(SORT.all):state.games.filter(g=>state.filter==='all'||g.status===state.filter).sort(SORT[state.filter]);
+  const ex=state.games.some(g=>g.example);
+  $('#view').innerHTML=`<p class="hint">${q?`Szukasz we wszystkich statusach: ${v.length} ${v.length===1?'gra':'gier'}.`:`${ex?'To przykładowe gry. Zaimportuj plik z HLTB, żeby dodać swoje. ':''}${HINT[state.filter]} Stuknij czas, żeby ustawić swój cel.`}</p>`+
+   (v.length?`<ul class="list">${v.map(card).join('')}</ul>`:`<p class="empty">Nic tu jeszcze nie ma.</p>`);
+}
+function card(g){
+  const s=S[g.status],pre=isPre(g),goal=GOALS.find(x=>x.k===g.goal)||GOALS[2],target=+g[goal.f]||0;
+  const pct=target?Math.min(100,Math.round((g.hours||0)/target*100)):0;
+  const A=[];
+  if(g.status==='backlog'&&!pre)A.push(`<button class="btn sm primary" data-go="playing" data-id="${g.id}">Zacznij grać</button>`);
+  if(g.status==='playing')A.push(`<button class="btn sm primary" data-go="completed" data-id="${g.id}">Ukończ</button><button class="btn sm" data-go="maxed" data-id="${g.id}">Wymaksuj</button><button class="btn sm ghost" data-go="retired" data-id="${g.id}">Porzuć</button>`);
+  if(g.status==='retired')A.push(`<label class="sw"><input type="checkbox" data-flag="wantReturn" data-id="${g.id}" ${g.wantReturn?'checked':''}>Chcę wrócić</label>`);
+  if(g.status==='completed')A.push(`<label class="sw"><input type="checkbox" data-flag="wantMax" data-id="${g.id}" ${g.wantMax?'checked':''}>Chcę wymaksować</label><button class="btn sm" data-go="maxed" data-id="${g.id}">Wymaksowane</button>`);
+  if(g.history.length)A.push(`<button class="btn sm ghost" data-undo="${g.id}">↶ Cofnij do „${S[g.history.at(-1).prev.status].l}”</button>`);
+  return `<li class="card${g.excluded?' dim':''}">
+   <button class="cover" style="${art(g)}" data-open="${g.id}" aria-label="Edytuj ${esc(g.title)}">${esc(initials(g))}</button>
+   <div class="info">
+    <button class="title" data-open="${g.id}">${esc(g.title)}</button>
+    <div class="row"><span class="pill"><span class="dot" style="background:var(${s.c})"></span>${s.l}</span>
+     <select class="plat" data-plat="${g.id}" aria-label="Platforma">${g.platform?'':'<option value="" selected>Wybierz platformę</option>'}${platOptions(g.platform)}</select>
+     ${pre?`<span class="pill pre">Preorder · ${pl(g.releaseDate)}</span>`:''}${g.excluded?'<span class="pill">Nie chcę grać</span>':''}${g.rating!==''?`<span class="small">★ ${g.rating}/10</span>`:''}</div>
+    <div class="goal">${GOALS.map(x=>`<button data-goal="${x.k}" data-id="${g.id}" aria-pressed="${g.goal===x.k}">${x.l}<b>${fmtH(g[x.f])}</b>${g[MY[x.k]]?`<span class="mine">Ty: ${fmtH(g[MY[x.k]])}</span>`:''}</button>`).join('')}</div>
+    ${g.status!=='maxed'&&!pre&&target?`<div class="pbar" title="Grane ${fmtH(g.hours||0)} z ${fmtH(target)}"><i style="width:${pct}%"></i><span>${pct}%</span></div>`:''}
+    ${g.status==='retired'&&g.retiredNote?`<p class="small">Powód: ${esc(g.retiredNote)}</p>`:''}
+    ${A.length?`<div class="row">${A.join('')}</div>`:''}
+   </div></li>`}
+
+// ---------- rating picker ----------
+const stars=(id,val)=>`<div class="stars" id="${id}">${Array.from({length:10},(_,i)=>`<button type="button" data-r="${i+1}" aria-pressed="${+val===i+1}">${i+1}</button>`).join('')}</div>`;
+function wireStars(id){const el=$('#'+id);if(!el)return;el.onclick=e=>{const b=e.target.closest('[data-r]');if(!b)return;const on=b.getAttribute('aria-pressed')==='true';
+  el.querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed','false'));if(!on)b.setAttribute('aria-pressed','true')}}
+const starVal=id=>{const b=$('#'+id+' [aria-pressed="true"]');return b?+b.dataset.r:''};
+
+// ---------- status changes ----------
+const TO_LABEL={backlog:'Przenieś do kolejki',playing:'Zacznij grać',retired:'Porzuć grę',completed:'Oznacz jako ukończoną',maxed:'Oznacz jako wymaksowaną'};
+function openTransition(g,to,after){
+  const hrs=['completed','maxed','retired'].includes(to),rate=['completed','maxed'].includes(to);
+  openModal(`<h2>${TO_LABEL[to]}</h2><p><b>${esc(g.title)}</b> · ${esc(g.platform)}<br><span class="small">${S[g.status].l} → ${S[to].l}</span></p>
+   ${hrs?`<div class="grid2"><label class="f">Czas gry (h)<input id="tHours" type="number" min="0" step="0.5" value="${g.hours||0}"></label>
+     <label class="f">Data<input id="tDate" type="date" value="${today()}"></label></div>`:''}
+   ${rate?`<div><div class="lbl">Ocena</div>${stars('tRate',g.rating)}</div>`:''}
+   ${to==='retired'?`<label class="f">Dlaczego porzucasz?<textarea id="tNote" rows="2">${esc(g.retiredNote)}</textarea></label>
+     <label class="sw"><input type="checkbox" id="tFlag" ${g.wantReturn?'checked':''}>Chcę kiedyś wrócić</label>`:''}
+   ${to==='completed'?`<label class="sw"><input type="checkbox" id="tFlag" ${g.wantMax?'checked':''}>Chcę wymaksować</label>`:''}
+   ${to==='playing'?`<p class="small">Data rozpoczęcia: ${pl(g.startDate||today())}</p>`:''}
+   <div class="actions"><button class="btn ghost" data-close>Anuluj</button><button class="btn primary" id="ok">Zatwierdź</button></div>`);
+  wireStars('tRate');
+  $('#ok').onclick=()=>{
+    const prev={status:g.status,hours:g.hours,rating:g.rating,startDate:g.startDate,completedDate:g.completedDate,maxedDate:g.maxedDate,retiredDate:g.retiredDate,retiredNote:g.retiredNote,wantReturn:g.wantReturn,wantMax:g.wantMax};
+    const b4=snap(g);g.history.push({prev,at:today()});g.status=to;
+    const d=$('#tDate')?.value||today();
+    if(hrs)g.hours=+$('#tHours').value||0;
+    if(rate)g.rating=starVal('tRate');
+    if(to==='playing'&&!g.startDate)g.startDate=today();
+    if(to==='completed'){g.completedDate=d;g.wantMax=$('#tFlag').checked}
+    if(to==='maxed'){g.maxedDate=d;if(!g.completedDate)g.completedDate=d;g.wantMax=false}
+    if(to==='retired'){g.retiredDate=d;g.retiredNote=$('#tNote').value.trim();g.wantReturn=$('#tFlag').checked}
+    track(g,b4);save();closeModal();render();toast(`${g.title}: ${S[to].l}`);after&&after()}}
+function undo(g,after){const h=g.history.at(-1);
+  openModal(`<h2>Cofnąć zmianę?</h2><p><b>${esc(g.title)}</b><br>${S[g.status].l} → <b>${S[h.prev.status].l}</b></p><p class="small">Przywrócę też godziny, ocenę i daty sprzed zmiany z ${pl(h.at)}.</p>
+   <div class="actions"><button class="btn ghost" data-close>Anuluj</button><button class="btn primary" id="ok">Cofnij</button></div>`);
+  $('#ok').onclick=()=>{const b4=snap(g);Object.assign(g,h.prev);g.history.pop();track(g,b4);save();closeModal();render();toast('Cofnięto');after&&after()}}
+
+function openModal(html){$('#modal').innerHTML=`<div class="overlay" data-backdrop><div class="sheet" role="dialog" aria-modal="true">${html}</div></div>`}
+function closeModal(){$('#modal').innerHTML=''}
+$('#modal').addEventListener('click',e=>{if(e.target.matches('[data-backdrop]')||e.target.closest('[data-close]'))closeModal()});
+
+// ---------- edit sheet ----------
+function openGame(g){
+  openModal(`<h2>${esc(g.title)}</h2>
+   <div><div class="lbl">Status</div><div class="statuspick"><span class="chip" aria-pressed="true"><span class="dot" style="background:var(${S[g.status].c})"></span>${S[g.status].l}</span>${STATUSES.filter(s=>s.k!==g.status).map(s=>`<button class="chip" data-pick="${s.k}"><span class="dot" style="background:var(${s.c})"></span>${s.l}</button>`).join('')}${g.history.length?`<button class="chip" id="dUndo">↶ Cofnij</button>`:''}</div></div>
+   <div class="grid2"><label class="f">Platforma<select id="fPlat">${g.platform?'':'<option value="" selected>—</option>'}${platOptions(g.platform)}</select></label>
+    <label class="f">Premiera<input id="fRel" type="date" value="${g.releaseDate||''}"></label></div>
+   <div><div class="lbl">Czasy przejścia (h)</div><div class="grid3">${GOALS.map(x=>`<label class="f">${x.l}<input id="f_${x.k}" type="number" min="0" value="${g[x.f]??''}"></label>`).join('')}</div></div>
+   <div><div class="lbl">Twoje czasy ukończenia (h)</div><div class="grid3">${GOALS.map(x=>`<label class="f">${x.l}<input id="fm_${x.k}" type="number" min="0" step="0.5" value="${g[MY[x.k]]??''}"></label>`).join('')}</div></div>
+   <label class="f">Twój czas gry łącznie (h)<input id="fHours" type="number" min="0" step="0.5" value="${g.hours||0}"></label>
+   <div><div class="lbl">Ocena</div>${stars('fRate',g.rating)}</div>
+   ${g.status==='retired'?`<label class="f">Powód porzucenia<textarea id="fNote2" rows="2">${esc(g.retiredNote)}</textarea></label><label class="sw"><input id="fRet" type="checkbox" ${g.wantReturn?'checked':''}>Chcę wrócić</label>`:''}
+   ${g.status==='completed'?`<label class="sw"><input id="fMax" type="checkbox" ${g.wantMax?'checked':''}>Chcę wymaksować</label>`:''}
+   ${g.status==='backlog'?`<label class="sw"><input id="fExcl" type="checkbox" ${g.excluded?'checked':''}>Nie chcę w to grać (poza turniejem)</label>`:''}
+   <label class="f">Link lub ID z HLTB<input id="fHltb" value="${esc(g.hltbId)}" placeholder="howlongtobeat.com/game/…"></label>
+   <label class="f">Notatka<textarea id="fNotes" rows="2">${esc(g.notes)}</textarea></label>
+   <div class="actions"><button class="btn ghost" data-close>Anuluj</button><button class="btn primary" id="saveG">Zapisz</button></div>`);
+  wireStars('fRate');
+  $$('[data-pick]').forEach(b=>b.onclick=()=>openTransition(g,b.dataset.pick));
+  $('#dUndo')&&($('#dUndo').onclick=()=>undo(g));
+  $('#saveG').onclick=()=>{const n=id=>{const v=$(id).value;return v===''?'':+v},b4=snap(g);
+    g.platform=$('#fPlat').value;g.releaseDate=$('#fRel').value;g.hours=n('#fHours')||0;g.rating=starVal('fRate');GOALS.forEach(x=>{g[x.f]=n('#f_'+x.k);g[MY[x.k]]=n('#fm_'+x.k)});g.notes=$('#fNotes').value;g.hltbId=hltbIdFrom($('#fHltb').value);
+    if($('#fNote2'))g.retiredNote=$('#fNote2').value.trim();if($('#fRet'))g.wantReturn=$('#fRet').checked;if($('#fMax'))g.wantMax=$('#fMax').checked;if($('#fExcl'))g.excluded=$('#fExcl').checked;
+    track(g,b4);save();closeModal();render();toast('Zapisano')}}
+
+// ---------- "Co zagrać?" tournament ----------
+// Każdy z każdym: każda para gier gra dokładnie raz, wygrana = 1 pkt.
+// Kolejka ułożona w kolejki ligowe (metoda koła), więc po każdej kolejce każda gra ma tyle samo pojedynków.
+function shuffle(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+function schedule(ids){const a=ids.slice();if(a.length%2)a.push(null);const n=a.length,out=[];
+  for(let r=0;r<n-1;r++){const md=[];for(let i=0;i<n/2;i++){const x=a[i],y=a[n-1-i];if(x&&y)md.push([x,y])}out.push(...shuffle(md));a.splice(1,0,a.pop())}
+  return out}
+const duels=n=>n*(n-1)/2;
+function startTour(){const ids=shuffle(state.games.filter(inPool).map(g=>g.id));
+  state.tour={phase:'rr',pts:Object.fromEntries(ids.map(id=>[id,0])),played:Object.fromEntries(ids.map(id=>[id,0])),pairs:schedule(ids),i:0,out:[],n:ids.length};save();drawArena()}
+const alive=()=>Object.keys(state.tour.pts).filter(id=>!state.tour.out.includes(id));
+const table=()=>{const T=state.tour;return alive().sort((a,b)=>(T.pts[b]-T.pts[a])||(T.played[a]-T.played[b]))};
+function nextPair(){const T=state.tour;while(T.i<T.pairs.length&&T.pairs[T.i].some(id=>T.out.includes(id)))T.i++;return T.pairs[T.i]}
+function left(){const T=state.tour;return T.pairs.slice(T.i).filter(p=>!p.some(id=>T.out.includes(id))).length}
+
+function renderPick(){
+  const pool=state.games.filter(inPool),n=pool.length,T=state.tour;
+  const last=(state.lastTour?.ranking||[]).map(byId).filter(Boolean);
+  $('#view').innerHTML=`<section class="panel">
+    <h2>Turniej „Co zagrać?”</h2>
+    <p class="small">Biorą udział wszystkie gry z kolejki (bez preorderów), porzucone z „Chcę wrócić” i ukończone z „Chcę wymaksować”. Teraz: <b>${n}</b>.</p>
+    <p class="small">Każda gra mierzy się z każdą. Za wygrany pojedynek gra dostaje 1 pkt, a pod pojedynkiem widzisz klasyfikację generalną na żywo. Przy ${n} grach to <b>${duels(n)}</b> pojedynków. Możesz przerwać w dowolnym momencie i wrócić później albo zakończyć wcześniej z aktualną tabelą.</p>
+    <div class="row">${T&&T.phase==='rr'?`<button class="btn primary" id="tResume">Kontynuuj turniej (zostało ${left()})</button><button class="btn ghost" id="tNew">Zacznij od nowa</button>`
+      :`<button class="btn primary" id="tNew" ${n<2?'disabled':''}>Rozpocznij turniej</button>`}</div>
+   </section>
+   ${last.length?'':(n?`<p class="hint">Biorą udział (${n}). Działają tu te same przyciski co na zwykłej liście.</p><ul class="list">${pool.slice().sort(SORT.backlog).map(card).join('')}</ul>`:'')}
+   <section class="panel"${last.length?'':' hidden'}><h2>Ostatnia klasyfikacja</h2>
+    ${last.length?`<p class="small">Turniej z ${pl(state.lastTour.date)}</p>`+last.map((g,i)=>`<div class="rank${i===0?' first':''}"><b>${i+1}.</b><span class="t">${esc(g.title)}<br><span class="small">${esc(g.platform)} · ${S[g.status].l}</span></span><b>${g.tp??0} pkt</b></div>`).join('')
+      :'<p class="small">Jeszcze nie rozegrano turnieju.</p>'}
+   </section>`;
+}
+function fighter(g,attrs){const T=state.tour;return `<button class="fighter" ${attrs}><div class="cover" style="${art(g)}">${esc(initials(g))}</div><div class="info"><span class="title" style="pointer-events:none">${esc(g.title)}</span><span class="why">${why(g)}</span><span class="meta"><span>${esc(g.platform)}</span><span>Fabuła ${fmtH(g.ttbMain)}</span>${g.hours?`<span>Grane ${fmtH(g.hours)}</span>`:''}<span>${T.pts[g.id]} pkt</span></span></div></button>`}
+const skipBtn=g=>`<button class="skip" data-skip="${g.id}">Nie chcę w to grać</button>`;
+function liveTable(cur){const T=state.tour;
+  return `<section class="panel"><h2>Klasyfikacja generalna</h2>${table().map((id,i)=>{const g=byId(id),now=cur.includes(id);
+    return `<div class="rank${i===0?' first':''}${now?' now':''}"><b>${i+1}.</b><span class="t">${esc(g.title)} <span class="small">· rozegrane ${T.played[id]}</span></span><b>${T.pts[id]} pkt</b></div>`}).join('')}</section>`}
+function closeArena(){$('#arena').innerHTML='';render()}
+function arena(head,body,end){$('#arena').innerHTML=`<div class="arena"><div class="inner"><div class="row" style="justify-content:space-between"><span class="round">${head}</span><span class="row">${end?'<button class="btn sm ghost" id="aEnd">Zakończ teraz</button>':''}<button class="btn sm ghost" id="aClose">Przerwij</button></span></div>${body}</div></div>`}
+
+function drawArena(){
+  const T=state.tour;if(!T)return closeArena();
+  if(T.phase==='rr'){
+    const p=nextPair();if(!p)return finish();
+    const [a,b]=p.map(byId),total=T.i+left(),done=T.i;
+    arena(`Pojedynek ${done+1} z ${total}`,`<div class="bar"><i style="width:${done/total*100}%"></i></div><h2>W co wolisz zagrać?</h2>
+     <div class="duel">${fighter(a,`data-win="${a.id}"`)}${skipBtn(a)}<div class="vs">VS</div>${fighter(b,`data-win="${b.id}"`)}${skipBtn(b)}</div>${liveTable(p)}`,true);
+  }else drawResult();
+}
+function win(w){const T=state.tour,p=T.pairs[T.i];T.pts[w]++;p.forEach(id=>T.played[id]++);T.i++;save();drawArena()}
+function finish(){const T=state.tour;T.phase='done';const ranking=table();
+  state.games.forEach(g=>{if(g.id in T.pts)g.tp=T.out.includes(g.id)?null:T.pts[g.id]});
+  state.lastTour={date:today(),ranking};save();drawArena()}
+function drawResult(){
+  const T=state.tour,rk=state.lastTour.ranking.map(byId).filter(Boolean),w=rk[0];if(!w)return closeArena();
+  arena('Klasyfikacja generalna',`<div class="champ"><div class="cover" style="${art(w)}">${esc(initials(w))}</div><div><div class="why">Zwycięzca · ${T.pts[w.id]} pkt</div><h2>${esc(w.title)}</h2><p class="small">${esc(w.platform)} · ${why(w)} · wygrane ${T.pts[w.id]} z ${T.played[w.id]}</p></div></div>
+   <div class="row"><button class="btn primary" id="wPlay">Gram w to</button><button class="btn" id="wAgain">Gramy od nowa</button></div>
+   <section class="panel">${rk.map((g,i)=>`<div class="rank${i===0?' first':''}"><b>${i+1}.</b><span class="t">${esc(g.title)}<br><span class="small">${esc(g.platform)} · wygrane ${T.pts[g.id]} z ${T.played[g.id]}</span></span><b>${T.pts[g.id]} pkt</b></div>`).join('')}</section>`);
+  $('#wPlay').onclick=()=>openTransition(w,'playing',()=>{state.tour=null;state.filter='playing';save();closeArena()});
+  $('#wAgain').onclick=startTour;
+}
+function askSkip(g){
+  const T=state.tour;
+  const what=g.status==='backlog'?['Gra zostanie oznaczona „Nie chcę w to grać” i wypadnie z turniejów. Zostaje w kolejce, a oznaczenie zdejmiesz w edycji gry.',()=>g.excluded=true]
+    :g.status==='retired'?['Odznaczę „Chcę wrócić” przy tej porzuconej grze.',()=>g.wantReturn=false]
+    :['Odznaczę „Chcę wymaksować” przy tej ukończonej grze.',()=>g.wantMax=false];
+  openModal(`<h2>Wyrzucić z turnieju?</h2><p><b>${esc(g.title)}</b></p><p class="small">${what[0]} Jej pozostałe pojedynki zostaną pominięte.</p>
+   <div class="actions"><button class="btn ghost" data-close>Anuluj</button><button class="btn primary" id="ok">Wyrzuć</button></div>`);
+  $('#ok').onclick=()=>{what[1]();T.out.push(g.id);save();closeModal();drawArena()}}
+$('#arena').addEventListener('click',e=>{const t=e.target.closest('button');if(!t)return;const T=state.tour;
+  if(t.id==='aClose'){save();return closeArena()}
+  if(!T)return;
+  if(t.id==='aEnd'){openModal(`<h2>Zakończyć turniej teraz?</h2><p class="small">Zostało ${left()} pojedynków. Zwycięzcę wyłonię z aktualnej tabeli.</p><div class="actions"><button class="btn ghost" data-close>Graj dalej</button><button class="btn primary" id="ok">Zakończ</button></div>`);$('#ok').onclick=()=>{closeModal();finish()}}
+  else if(t.dataset.win){t.classList.add('win');setTimeout(()=>win(t.dataset.win),160)}
+  else if(t.dataset.skip)askSkip(byId(t.dataset.skip))});
+
+// ---------- lista "Do HLTB" ----------
+// Każda zmiana w aplikacji zapisuje różnicę względem stanu sprzed zmiany; powrót do pierwotnej wartości kasuje zadanie.
+const TRACK=['status','hours','myMain','myExtra','my100','startDate','completedDate','rating','retiredNote','platform'];
+const snap=g=>Object.fromEntries(TRACK.map(f=>[f,g[f]??'']));
+function track(g,b4){const a=snap(g),e=state.sync[g.id]||{fields:{}};let ch=false;
+  TRACK.forEach(f=>{if(String(b4[f])===String(a[f]))return;ch=true;if(!(f in e.fields))e.fields[f]={from:b4[f]};e.fields[f].to=a[f];if(String(e.fields[f].from)===String(a[f]))delete e.fields[f]});
+  if(!ch)return;e.title=g.title;e.platform=a.platform;e.at=new Date().toLocaleString('pl-PL',{dateStyle:'short',timeStyle:'short'});e.ts=Date.now();
+  if(Object.keys(e.fields).length)state.sync[g.id]=e;else delete state.sync[g.id]}
+const HL={backlog:'Backlog',playing:'Playing',retired:'Retired',completed:'Completed',maxed:'Completed + Maxed'};
+const HLF={add:['Nowa gra',v=>v],status:['Lista',v=>HL[v]||'—'],hours:['Progress',v=>v===''||v==null?'—':v+' h'],myMain:['Main Story',fmtH],myExtra:['Main + Sides',fmtH],my100:['Completionist',fmtH],startDate:['Start Date',v=>v||'—'],completedDate:['Completion Date',v=>v||'—'],
+  rating:['Review',v=>v===''?'brak':v*10+'/100'],retiredNote:['Retired Notes',v=>v||'—'],platform:['Platform',v=>v||'—']};
+const syncCount=()=>Object.values(state.sync).reduce((a,e)=>a+Object.keys(e.fields).length,0);
+function updSyncTab(){const n=syncCount();$('#tabSync').textContent='Do HLTB'+(n?` (${n})`:'')}
+function renderSync(){const E=Object.entries(state.sync).sort((a,b)=>(b[1].ts||0)-(a[1].ts||0));
+  $('#view').innerHTML=`<section class="panel"><h2>Do przeklikania w HLTB</h2><p class="small">Zmiany z aplikacji, które trzeba ręcznie wprowadzić na howlongtobeat.com. Odhacz to, co już zrobiłeś. Po imporcie nowego eksportu z HLTB lista czyści się sama.</p>
+   ${E.length?`<div class="row"><button class="btn ghost sm" id="syncClear">Wyczyść wszystko</button></div>`:''}</section>
+   ${E.length?E.map(([id,e])=>`<section class="panel"><div class="row" style="justify-content:space-between"><h3 style="min-width:0;overflow-wrap:anywhere">${esc(e.title)}</h3>${(h=>`<a class="small" href="${h?`https://howlongtobeat.com/game/${h}`:`https://howlongtobeat.com/?q=${encodeURIComponent(e.title)}`}" target="_blank" rel="noopener">${h?'Otwórz w HLTB':'Szukaj w HLTB'} ↗</a>`)(byId(id)?.hltbId)}</div>
+     <p class="small">${esc(e.platform)} · zmienione ${esc(e.at)}</p>
+     ${Object.entries(e.fields).map(([f,x])=>`<label class="sw" style="font-weight:500;align-items:flex-start"><input type="checkbox" data-done="${id}" data-field="${f}"><span><b>${HLF[f][0]}:</b> ${esc(HLF[f][1](x.to))}${f==='add'?'':` <span class="small">(było: ${esc(HLF[f][1](x.from))})</span>`}</span></label>`).join('')}
+     <div class="row"><button class="btn sm" data-doneall="${id}">Wszystko zrobione</button></div></section>`).join('')
+     :'<p class="empty">Wszystko zsynchronizowane, nie ma nic do przeklikania.</p>'}`;
+  $('#syncClear')&&($('#syncClear').onclick=()=>{openModal(`<h2>Wyczyścić listę?</h2><p class="small">Usunę wszystkie zadania do przeklikania w HLTB.</p><div class="actions"><button class="btn ghost" data-close>Anuluj</button><button class="btn primary" id="ok">Wyczyść</button></div>`);
+    $('#ok').onclick=()=>{state.sync={};save();closeModal();render()}})}
+
+const hltbIdFrom=v=>{v=(v||'').trim();const m=v.match(/game\/(\d+)/);return m?m[1]:/^\d+$/.test(v)?v:''};
+
+// ---------- statistics ----------
+function renderStats(){
+  const G=state.games,c=k=>G.filter(g=>g.status===k).length,max=Math.max(1,...STATUSES.map(s=>c(s.k)));
+  const fin=G.filter(g=>['completed','maxed'].includes(g.status));
+  const years={};fin.forEach(g=>{const y=(g.completedDate||'').slice(0,4);if(y)years[y]=(years[y]||0)+1});
+  const ys=Object.keys(years).sort().reverse(),ymax=Math.max(1,...Object.values(years));
+  const mx=f=>G.filter(g=>g.status==='maxed'&&family(g.platform)===f).length;
+  const tr=[['Calaki','Xbox',mx('xbox')],['Platyny','PlayStation',mx('ps')],['100%','Nintendo',mx('nintendo')]],tmax=Math.max(1,...tr.map(x=>x[2]));
+  $('#view').innerHTML=`
+   <section class="panel"><h2>Gry wg statusu</h2><div class="stiles">${STATUSES.map(s=>`<button class="stile" data-sf="${s.k}" style="--c:var(${s.c})"><b>${c(s.k)}</b><span>${s.l}</span></button>`).join('')}<button class="stile" data-sf="all" style="--c:var(--ink)"><b>${G.length}</b><span>Łącznie</span></button></div></section>
+   <section class="panel"><h2>Wymaksowane</h2>${tr.map(([l,p,n])=>`<div class="statrow"><span>${l} <span class="small">${p}</span></span><span class="bar"><i style="width:${n/tmax*100}%;background:var(--s-max)"></i></span><span>${n}</span></div>`).join('')}</section>
+   <section class="panel"><h2>Ukończone wg roku</h2>${ys.length?ys.map(y=>`<div class="statrow"><span>${y}</span><span class="bar"><i style="width:${years[y]/ymax*100}%"></i></span><span>${years[y]}</span></div>`).join(''):'<p class="small">Brak dat ukończenia.</p>'}</section>
+   <section class="panel"><h2>Dane</h2><p class="small">Dane są tylko w tej przeglądarce i nigdzie nie są wysyłane.${state.importFile?` Ostatni import: ${esc(state.importFile)} (${pl(state.importedAt)}).`:''} Import nowego pliku z HLTB zastępuje wszystko.</p><div class="row"><button class="btn ghost" id="reset">Wyczyść wszystkie dane</button></div></section>`;
+  $('#reset').onclick=()=>{openModal(`<h2>Wyczyścić wszystkie dane?</h2><p>Gry, zmiany zrobione w aplikacji, wyniki turniejów i lista „Do HLTB” zostaną usunięte z tej przeglądarki.</p><div class="actions"><button class="btn ghost" data-close>Anuluj</button><button class="btn primary" id="ok">Przywróć</button></div>`);
+    $('#ok').onclick=()=>{state={games:[],filter:'playing',tab:'list',sync:{}};save();closeModal();render()}}}
+
+// ---------- HLTB import ----------
+function parseCSV(t){t=t.replace(/^﻿/,'');const rows=[];let row=[],f='',q=false;
+  for(let i=0;i<t.length;i++){const ch=t[i];
+    if(q){if(ch==='"'){if(t[i+1]==='"'){f+='"';i++}else q=false}else f+=ch}
+    else if(ch==='"')q=true;else if(ch===','){row.push(f);f=''}
+    else if(ch==='\n'||ch==='\r'){if(ch==='\r'&&t[i+1]==='\n')i++;row.push(f);rows.push(row);row=[];f=''}
+    else f+=ch}
+  if(f||row.length){row.push(f);rows.push(row)}
+  return rows.filter(r=>r.some(x=>x.trim()))}
+const norm=s=>(s||'').toLowerCase().normalize('NFKD').replace(/[^a-z0-9]/g,'');
+const keyOf=g=>norm(g.title)+'|'+norm(g.platform);
+const flag=v=>!!(v&&v.trim()&&!/^(0|false|no)$/i.test(v.trim()));
+const date=v=>(v&&/^\d{4}-\d{2}-\d{2}/.test(v)&&!v.startsWith('0000'))?v.slice(0,10):'';
+function hours(v){v=(v||'').trim();if(!v)return'';if(v.includes(':')){const[h,m,s]=v.split(':').map(Number);return Math.round(((h||0)+(m||0)/60+(s||0)/3600)*10)/10}const n=parseFloat(v);return isNaN(n)?'':n}
+// HLTB pozwala mieć grę jednocześnie na kilku listach: Backlog przy Retired = chcesz wrócić, Backlog przy Completed = chcesz dokończyć/wymaksować.
+function statusFrom(r){const B=flag(r.Backlog)||flag(r.Replay);
+  if(flag(r.Playing))return{status:'playing'};if(flag(r.Maxed))return{status:'maxed'};
+  if(flag(r.Completed))return{status:'completed',wantMax:B};if(flag(r.Retired))return{status:'retired',wantReturn:B};
+  if(B)return{status:'backlog'};return null} // samo Owned albo Wishlist: pomijamy
+// Import = reset: nowy plik z HLTB jest jedynym źródłem prawdy i zastępuje wszystkie dane w aplikacji.
+// (Wersja scalająca z ekranem konfliktów: docs/tasks/archive/import-merge.js)
+function parseExport(text){
+  const rows=parseCSV(text);if(rows.length<2)throw new Error('Plik jest pusty.');
+  const head=rows[0].map(h=>h.trim());if(!head.includes('Title'))throw new Error('To nie wygląda na eksport z HLTB: brak kolumny „Title”.');
+  const recs=rows.slice(1).map(r=>Object.fromEntries(head.map((h,i)=>[h,r[i]??''])));
+  const games=[],seen=new Set();let skipped=0;
+  recs.forEach((r,i)=>{if(!(r.Title||'').trim())return;
+    const sf=statusFrom(r);if(!sf){skipped++;return}
+    const st=sf.status,rv=Math.round(parseFloat(r.Review));
+    const g=blank({id:'h'+i,title:r.Title.trim(),platform:(r.Platform||'').trim(),status:st,wantReturn:!!sf.wantReturn,wantMax:!!sf.wantMax,
+      hours:hours(r.Progress)||hours(r.Completionist)||hours(r['Main + Sides']||r['Main + Extras'])||hours(r['Main Story'])||0,
+      myMain:hours(r['Main Story']),myExtra:hours(r['Main + Sides']||r['Main + Extras']),my100:hours(r.Completionist),
+      startDate:date(r['Start Date']),completedDate:st==='retired'?'':date(r['Completion Date']),retiredDate:st==='retired'?date(r['Completion Date']):'',
+      retiredNote:st==='retired'?(r['Retired Notes']||'').trim():'',rating:isNaN(rv)||rv<=0?'':Math.min(10,Math.max(1,rv>10?Math.round(rv/10):rv)),notes:(r['General Notes']||'').trim()});
+    const k=keyOf(g);if(seen.has(k))return;seen.add(k);games.push(g)});
+  return{games,skipped}}
+function showImport(res,fileName){
+  const by={};res.games.forEach(g=>by[g.status]=(by[g.status]||0)+1);const had=state.games.length;
+  openModal(`<h2>Import z HLTB</h2><p class="small">${esc(fileName)}</p>
+   <div class="stiles">${STATUSES.map(s=>`<div class="stile" style="--c:var(${s.c})"><b>${by[s.k]||0}</b><span>${s.l}</span></div>`).join('')}<div class="stile" style="--c:var(--ink)"><b>${res.games.length}</b><span>Łącznie</span></div></div>
+   ${res.skipped?`<p class="small">Pominięte: ${res.skipped} (gry tylko z Owned albo tylko z Wishlist).</p>`:''}
+   ${had?`<p><b>Plik zastąpi wszystkie obecne dane</b>: ${had} gier, cele czasowe, wyniki turnieju i listę „Do HLTB”.</p>`:''}
+   <div class="actions"><button class="btn ghost" data-close>Anuluj</button><button class="btn primary" id="apply" ${res.games.length?'':'disabled'}>${had?'Zastąp dane':'Wczytaj gry'}</button></div>`);
+  $('#apply').onclick=()=>{state={games:res.games,filter:'playing',tab:'list',sync:{},importFile:fileName,importedAt:today()};navigator.storage?.persist?.();save();closeModal();render();toast(`Wczytano ${res.games.length} gier`)}}
+
+$('#importBtn').onclick=()=>$('#file').click();
+$('#file').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;
+  try{showImport(parseExport(await f.text()),f.name)}catch(err){openModal(`<h2>Nie udało się wczytać pliku</h2><p>${esc(err.message)}</p><p class="small">Wyeksportuj listę w HLTB jako CSV i wybierz ten plik.</p><div class="actions"><button class="btn primary" data-close>OK</button></div>`)}};
+
+// ---------- events ----------
+let qv='';
+$('#q').addEventListener('input',e=>{qv=e.target.value;renderList()});
+$('#chips').addEventListener('click',e=>{const b=e.target.closest('[data-f]');if(!b)return;state.filter=b.dataset.f;qv='';$('#q').value='';save();render()});
+$('#view').addEventListener('click',e=>{const t=e.target.closest('button');if(!t)return;
+  if(t.dataset.open)openGame(byId(t.dataset.open));
+  else if(t.dataset.go)openTransition(byId(t.dataset.id),t.dataset.go);
+  else if(t.dataset.undo)undo(byId(t.dataset.undo));
+  else if(t.dataset.goal){byId(t.dataset.id).goal=t.dataset.goal;save();render()}
+  else if(t.dataset.sf){state.filter=t.dataset.sf;state.tab='list';qv='';$('#q').value='';save();render();scrollTo(0,0)}
+  else if(t.dataset.doneall){delete state.sync[t.dataset.doneall];save();render();toast('Odhaczone')}
+  else if(t.id==='importBig')$('#file').click();
+  else if(t.id==='tResume')drawArena();
+  else if(t.id==='tNew')startTour()});
+$('#view').addEventListener('change',e=>{const t=e.target;
+  if(t.dataset.done){const e=state.sync[t.dataset.done];delete e.fields[t.dataset.field];if(!Object.keys(e.fields).length)delete state.sync[t.dataset.done];save();render();toast('Odhaczone');return}
+  if(t.dataset.plat){const g=byId(t.dataset.plat),b4=snap(g);g.platform=t.value;track(g,b4);updSyncTab();save();toast(`${g.title}: ${t.value}`);return}
+  if(!t.dataset.flag)return;byId(t.dataset.id)[t.dataset.flag]=t.checked;save();render();
+  toast(t.checked?'Gra trafi do turnieju „Co zagrać?”':'Gra wypadła z turnieju')});
+$('#tabList').onclick=()=>{state.tab='list';save();render()};
+$('#tabStats').onclick=()=>{state.tab='stats';save();render()};
+$('#tabSync').onclick=()=>{state.tab='sync';save();render()};
+render();
+</script>
+</body>
+</html>

@@ -1,0 +1,8 @@
+# Prywatny eksport z HowLongToBeat - nigdy nie commitowac
+hltb/
+
+node_modules/
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
