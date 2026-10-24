@@ -70,4 +70,7 @@ vm.runInContext(`state.games=[blank({id:"z1",title:"Z",platform:"PC",status:"bac
   {const g=state.games[0],b=snap(g);g.excluded=true;track(g,b)}{const g=state.games[1],b=snap(g);g.wantReturn=false;track(g,b)}
   globalThis.__sync=state.sync;`, ctx);
 expect(ctx.__sync.z1?.fields?.excluded?.to === true && ctx.__sync.z2?.fields?.wantReturn?.to === false, "Do HLTB: brak zadania po wyrzuceniu gry lub zmianie Chcę wrócić");
+// --- krok wstecz na kartach także dla gier z importu (bez historii) ---
+vm.runInContext(`globalThis.__cards=["maxed","completed","retired","playing","backlog"].map(st=>card(blank({id:"c"+st,title:"C",platform:"PC",status:st})))`, ctx);
+expect(["completed","playing","playing","backlog",null].every((b,i)=>b?ctx.__cards[i].includes(`data-go="${b}"`):!/← /.test(ctx.__cards[i])), "brak przycisku kroku wstecz na karcie");
 if (!hook) console.log('check-web: OK');

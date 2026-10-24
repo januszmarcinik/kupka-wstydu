@@ -330,7 +330,10 @@ function card(g){
   if(g.status==='playing')A.push(`<button class="btn sm primary" data-go="completed" data-id="${g.id}">Ukończ</button><button class="btn sm" data-go="maxed" data-id="${g.id}">Wymaksuj</button><button class="btn sm ghost" data-go="retired" data-id="${g.id}">Porzuć</button>`);
   if(g.status==='retired')A.push(`<label class="sw"><input type="checkbox" data-flag="wantReturn" data-id="${g.id}" ${g.wantReturn?'checked':''}>Chcę wrócić</label>`);
   if(g.status==='completed')A.push(`<label class="sw"><input type="checkbox" data-flag="wantMax" data-id="${g.id}" ${g.wantMax?'checked':''}>Chcę wymaksować</label><button class="btn sm" data-go="maxed" data-id="${g.id}">Wymaksowane</button>`);
-  if(g.history.length)A.push(`<button class="btn sm ghost" data-undo="${g.id}">↶ Cofnij do „${S[g.history.at(-1).prev.status].l}”</button>`);
+  const back=BACK[g.status],last=g.history.at(-1);
+  if(last&&last.prev.status===back)A.push(`<button class="btn sm ghost" data-undo="${g.id}">← ${S[back].l}</button>`);
+  else{if(back)A.push(`<button class="btn sm ghost" data-go="${back}" data-id="${g.id}">← ${S[back].l}</button>`);
+    if(last)A.push(`<button class="btn sm ghost" data-undo="${g.id}">↶ Cofnij do „${S[last.prev.status].l}”</button>`)}
   return `<li class="card${g.excluded?' dim':''}">
    <button class="cover" style="${art(g)}" data-open="${g.id}" aria-label="Edytuj ${esc(g.title)}">${esc(initials(g))}</button>
    <div class="info">
@@ -351,12 +354,14 @@ function wireStars(id){const el=$('#'+id);if(!el)return;el.onclick=e=>{const b=e
 const starVal=id=>{const b=$('#'+id+' [aria-pressed="true"]');return b?+b.dataset.r:''};
 
 // ---------- status changes ----------
+const BACK={maxed:'completed',completed:'playing',retired:'playing',playing:'backlog'}; // krok wstecz na ścieżce gry
 const TO_LABEL={backlog:'Przenieś do kolejki',playing:'Zacznij grać',retired:'Porzuć grę',completed:'Oznacz jako ukończoną',maxed:'Oznacz jako wymaksowaną'};
 function openTransition(g,to,after){
   const hrs=['completed','maxed','retired'].includes(to),rate=['completed','maxed'].includes(to);
-  openModal(`<h2>${TO_LABEL[to]}</h2><p><b>${esc(g.title)}</b> · ${esc(g.platform)}<br><span class="small">${S[g.status].l} → ${S[to].l}</span></p>
+  const backward=BACK[g.status]===to;
+  openModal(`<h2>${backward?`Wróć do: ${S[to].l}`:TO_LABEL[to]}</h2><p><b>${esc(g.title)}</b> · ${esc(g.platform)}<br><span class="small">${S[g.status].l} → ${S[to].l}</span></p>
    ${hrs?`<div class="grid2"><label class="f">Czas gry (h)<input id="tHours" type="number" min="0" step="0.5" value="${g.hours||0}"></label>
-     <label class="f">Data<input id="tDate" type="date" value="${today()}"></label></div>`:''}
+     <label class="f">Data<input id="tDate" type="date" value="${backward&&to==='completed'&&g.completedDate?g.completedDate:today()}"></label></div>`:''}
    ${rate?`<div><div class="lbl">Ocena</div>${stars('tRate',g.rating)}</div>`:''}
    ${to==='retired'?`<label class="f">Dlaczego porzucasz?<textarea id="tNote" rows="2">${esc(g.retiredNote)}</textarea></label>
      <label class="sw"><input type="checkbox" id="tFlag" ${g.wantReturn?'checked':''}>Chcę kiedyś wrócić</label>`:''}
@@ -371,7 +376,7 @@ function openTransition(g,to,after){
     if(hrs)g.hours=+$('#tHours').value||0;
     if(rate)g.rating=starVal('tRate');
     if(to==='playing'&&!g.startDate)g.startDate=today();
-    if(to==='completed'){g.completedDate=d;g.wantMax=$('#tFlag').checked}
+    if(to==='completed'){g.completedDate=d;g.wantMax=$('#tFlag').checked;if(prev.status==='maxed')g.maxedDate=''}
     if(to==='maxed'){g.maxedDate=d;if(!g.completedDate)g.completedDate=d;g.wantMax=false}
     if(to==='retired'){g.retiredDate=d;g.retiredNote=$('#tNote').value.trim();g.wantReturn=$('#tFlag').checked}
     track(g,b4);save();closeModal();render();toast(`${g.title}: ${S[to].l}`);after&&after()}}
