@@ -135,6 +135,9 @@ label.f input,label.f select,label.f textarea{font:inherit;color:var(--ink);back
 .intro .big{font:700 clamp(32px,9vw,52px)/1.05 var(--display);text-transform:uppercase;letter-spacing:.04em;background:linear-gradient(90deg,#fff,var(--accent2));-webkit-background-clip:text;background-clip:text;color:transparent;text-wrap:balance}
 .intro section.panel{width:100%;text-align:left}
 .intro .btn{padding:12px 28px;font-size:16px}
+.pickrow{display:grid;grid-template-columns:22px 1fr;gap:10px;align-items:center;padding:8px 4px;border-bottom:1px solid var(--line);cursor:pointer;font-size:14px}
+.pickrow input{width:18px;height:18px;accent-color:var(--accent);margin:0}
+.pickrow .t{min-width:0;overflow-wrap:anywhere}
 .vsrow{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:center;font-size:14px;padding:6px 0;border-bottom:1px solid var(--line)}
 .vsrow span:first-child{text-align:right}
 .vsrow b{color:var(--accent2);font-variant-numeric:tabular-nums}
@@ -492,13 +495,24 @@ function finalRanking(T){
 // ---------- turniej: widok ----------
 const roundsWord=r=>r===1?'runda':r<5?'rundy':'rund';
 const rankRow=(r,g,cls='',note='')=>`<div class="rank${r.place===1?' first':''}${cls}"><b>${r.place}.</b><span class="t">${esc(g.title)}${note}<br><span class="small">${esc(g.platform)}${r.stage?` · ${r.stage}`:''}${r.w!=null?` · bilans ${r.w}–${r.l}`:''}</span></span><b>${r.pts!=null?r.pts+' pkt':''}</b></div>`;
+// Uczestnicy: wszystkie gry z puli albo tylko zaznaczone (state.tourMode='pick', state.tourPick = lista id), bez limitu.
+const tourGames=()=>{const pool=state.games.filter(inPool),sel=new Set(state.tourPick||[]);return state.tourMode==='pick'?pool.filter(g=>sel.has(g.id)):pool};
+let pq='';
+const pickMatch=g=>!pq||norm(g.title).includes(norm(pq));
+function pickList(pool){const sel=new Set(state.tourPick||[]);
+  return `<section class="panel"><h2>Wybierz gry</h2>
+   <input id="pq" class="search" type="search" placeholder="Szukaj w dostępnych grach" autocomplete="off" aria-label="Szukaj w dostępnych grach" value="${esc(pq)}">
+   <div class="row"><button class="btn sm" id="pAll">Zaznacz widoczne</button><button class="btn sm ghost" id="pNone">Odznacz wszystkie</button></div>
+   <div>${pool.slice().sort(SORT.backlog).map(g=>`<label class="pickrow" data-row="${esc(norm(g.title))}"${pickMatch(g)?'':' hidden'}><input type="checkbox" data-pick="${g.id}" ${sel.has(g.id)?'checked':''}><span class="t">${esc(g.title)}<br><span class="small">${esc(g.platform)} · ${S[g.status].l}</span></span></label>`).join('')}</div></section>`}
 function renderPick(){
-  const pool=state.games.filter(inPool),n=pool.length,T=state.tour,run=T&&!T.finished;
+  const pool=state.games.filter(inPool),pick=state.tourMode==='pick',n=tourGames().length,T=state.tour,run=T&&!T.finished;
   const rows=(state.lastTour?.rows||(state.lastTour?.ranking||[]).map((id,i)=>({id,place:i+1}))).filter(r=>byId(r.id));
   const R=tourRounds(n),K=koSize(n);
   $('#view').innerHTML=`<section class="panel">
     <h2>Turniej „Co zagrać?”</h2>
-    <p class="small">Biorą udział wszystkie gry z kolejki (bez preorderów), porzucone z „Chcę wrócić” i ukończone z „Chcę wymaksować”. Teraz: <b>${n}</b>.</p>
+    <div class="row" role="group" aria-label="Kto bierze udział"><button class="chip" data-tmode="all" aria-pressed="${!pick}">Wszystkie gry <b>${pool.length}</b></button><button class="chip" data-tmode="pick" aria-pressed="${pick}">Tylko wybrane <b>${pick?n:(state.tourPick||[]).filter(id=>pool.some(g=>g.id===id)).length}</b></button></div>
+    <p class="small">${pick?`Biorą udział tylko gry zaznaczone niżej, bez limitu. Wybierasz spośród ${pool.length} dostępnych: z kolejki (bez preorderów), porzuconych z „Chcę wrócić” i ukończonych z „Chcę wymaksować”. Zaznaczone: <b>${n}</b>.${n<2?' Zaznacz co najmniej 2.':''}`
+      :`Biorą udział wszystkie gry z kolejki (bez preorderów), porzucone z „Chcę wrócić” i ukończone z „Chcę wymaksować”. Teraz: <b>${n}</b>.`}</p>
     <p class="small"><b>1. Kwalifikacje:</b> ${R} ${roundsWord(R)} w systemie szwajcarskim. W każdej rundzie każda gra gra jeden pojedynek z grą o podobnym wyniku, bez powtórek. Wygrana = 1 pkt.<br>
     ${K?`<b>2. Puchar:</b> ${K===8?'najlepsza ósemka gra ćwierćfinały, a najlepszy przegrany dostaje drugą szansę w barażu (lucky loser)':K===4?'najlepsza czwórka gra półfinały':'najlepsza dwójka gra finał'}. Pary układają się same, a punkty z kwalifikacji przechodzą dalej.<br>`:''}
     <b>${K?3:2}. Klasyfikacja generalna:</b> miejsca od mistrza w dół.</p>
@@ -506,7 +520,7 @@ function renderPick(){
     <div class="row">${run?`<button class="btn primary" id="tResume">Kontynuuj turniej (zostało maks. ${remaining(T)})</button><button class="btn ghost" id="tNew">Zacznij od nowa</button>`
       :`<button class="btn primary" id="tNew" ${n<2?'disabled':''}>Rozpocznij turniej</button>`}</div>
    </section>
-   ${rows.length?'':(n?`<p class="hint">Biorą udział (${n}). Działają tu te same przyciski co na zwykłej liście.</p><ul class="list">${pool.slice().sort(SORT.backlog).map(card).join('')}</ul>`:'')}
+   ${pick?pickList(pool):rows.length?'':(n?`<p class="hint">Biorą udział (${n}). Działają tu te same przyciski co na zwykłej liście.</p><ul class="list">${pool.slice().sort(SORT.backlog).map(card).join('')}</ul>`:'')}
    <section class="panel"${rows.length?'':' hidden'}><h2>Ostatnia klasyfikacja</h2>
     ${rows.length?`<p class="small">Turniej z ${pl(state.lastTour.date)}</p>`+rows.map(r=>rankRow(r,byId(r.id))).join(''):''}
    </section>`;
@@ -519,7 +533,7 @@ function liveTable(cur){const T=state.tour;
 function closeArena(){$('#arena').innerHTML='';render()}
 function arena(head,body,end){$('#arena').innerHTML=`<div class="arena"><div class="inner"><div class="row" style="justify-content:space-between"><span class="round">${head}</span><span class="row">${end?'<button class="btn sm ghost" id="aEnd">Zakończ teraz</button>':''}<button class="btn sm ghost" id="aClose">Przerwij</button></span></div>${body}</div></div>`}
 
-function startTour(){state.tour=newTour(shuffle(state.games.filter(inPool).map(g=>g.id)));save();drawArena()}
+function startTour(){const ids=tourGames().map(g=>g.id);if(ids.length<2)return toast('Za mało gier do turnieju');state.tour=newTour(shuffle(ids));save();drawArena()}
 function drawArena(){
   const T=state.tour;if(!T)return closeArena();
   const p=T.finished?null:currentDuel(T);
@@ -693,9 +707,16 @@ $('#view').addEventListener('click',e=>{const t=e.target.closest('button');if(!t
   else if(t.dataset.doneall){delete state.sync[t.dataset.doneall];save();render();toast('Odhaczone')}
   else if(t.id==='importBig')$('#file').click();
   else if(t.id==='tResume')drawArena();
-  else if(t.id==='tNew')startTour()});
+  else if(t.id==='tNew')startTour();
+  else if(t.dataset.tmode){state.tourMode=t.dataset.tmode;if(state.tourMode==='pick'&&!state.tourPick)state.tourPick=[];save();render()}
+  else if(t.id==='pAll'||t.id==='pNone'){const pool=state.games.filter(inPool),sel=new Set(state.tourPick||[]);
+    pool.forEach(g=>{if(t.id==='pNone')sel.delete(g.id);else if(pickMatch(g))sel.add(g.id)});state.tourPick=[...sel];save();render()}});
+$('#view').addEventListener('input',e=>{if(e.target.id!=='pq')return;pq=e.target.value;const q=norm(pq);
+  $('#view').querySelectorAll('[data-row]').forEach(r=>r.hidden=!!q&&!r.dataset.row.includes(q))});
 $('#view').addEventListener('change',e=>{const t=e.target;
   if(t.dataset.done){const e=state.sync[t.dataset.done];delete e.fields[t.dataset.field];if(!Object.keys(e.fields).length)delete state.sync[t.dataset.done];save();render();toast('Odhaczone');return}
+  if(t.dataset.pick){const sel=new Set(state.tourPick||[]);t.checked?sel.add(t.dataset.pick):sel.delete(t.dataset.pick);state.tourPick=[...sel];save();
+    const y=scrollY;render();scrollTo(0,y);$(`[data-pick="${t.dataset.pick}"]`)?.focus();return}
   if(t.dataset.plat){const g=byId(t.dataset.plat),b4=snap(g);g.platform=t.value;track(g,b4);updSyncTab();save();toast(`${g.title}: ${t.value}`);return}
   if(!t.dataset.flag)return;{const g=byId(t.dataset.id),b4=snap(g);g[t.dataset.flag]=t.checked;track(g,b4)}save();render();
   toast(t.checked?'Gra trafi do turnieju „Co zagrać?”':'Gra wypadła z turnieju')});

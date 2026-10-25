@@ -29,6 +29,7 @@ Nakładka na HLTB: **HLTB jest jedynym źródłem prawdy**. Aplikacja wczytuje e
 
 ### Co zagrać? (turniej)
 - Pula: W kolejce (bez preorderów i bez „Nie chcę grać”), Porzucone z „Chcę wrócić”, Ukończone z „Chcę wymaksować”. Przed pierwszym turniejem zakładka pokazuje uczestników jak zwykłą listę.
+- Uczestnicy: przełącznik „Wszystkie gry” (cała pula) albo „Tylko wybrane”: lista gier z puli z checkboxami i wyszukiwarką, bez limitu liczby gier (minimum 2). Wybór zostaje zapisany (`tourPick`) do kolejnych turniejów; import go resetuje.
 - **Kwalifikacje (system szwajcarski)**: R = ceil(log2 N), ograniczone do 3–6 i najwyżej N−1 (18–32 gry dają 5 rund). W każdej rundzie każda gra gra jeden pojedynek z grą o podobnym wyniku (punkty, potem Buchholz), bez rewanżów, jeśli to możliwe. Przy nieparzystej liczbie gier wolny los (+1 pkt) dostaje najsłabsza gra, która go jeszcze nie miała.
 - **Puchar**: N ≥ 12 → ósemka (1–8, 4–5, 2–7, 3–6), 6–11 → czwórka, 4–5 → finał. Przy 2–3 grach są tylko kwalifikacje. Pary układają się same. **Lucky loser**: po ćwierćfinałach przegrany z największą liczbą punktów gra baraż z najsłabszym zwycięzcą ćwierćfinałów o miejsce w półfinale.
 - Każda wygrana (także walkower i wolny los) = 1 pkt. Punkty przechodzą przez cały turniej.
